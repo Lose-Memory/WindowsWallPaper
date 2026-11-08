@@ -77,3 +77,5 @@ pwsh -File scripts/build-package.ps1 # 构建交付文件夹到 release\WindowsW
 ## 许可
 
 本项目以 [MIT 许可](LICENSE) 发布。
+
+本软件有 AI 辅助构建，人类负责想法、项目布局等其他事情。
