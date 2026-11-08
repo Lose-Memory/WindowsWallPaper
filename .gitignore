@@ -1,0 +1,50 @@
+# ===== 前端 =====
+/node_modules/
+/dist/
+# 排版自检（layout-check/）的产物与截图。入口与配置
+# （layout-check/、vite.layout.config.ts）**入库**，产物不入库。
+/layout-check-dist/
+/layout-check-shots/
+
+# ===== Rust =====
+/src-tauri/target/
+/src-tauri/gen/
+
+# ===== 交付文件夹（由 scripts/build-package.ps1 生成，不入库）=====
+/release/
+
+# ===== 运行时数据 =====
+# 程序在自己旁边创建的目录，属于用户数据（含图库索引），不入库。
+/src-tauri/config/
+/src-tauri/data/
+/src-tauri/logs/
+/src-tauri/webview2/
+/src-tauri/wwp-data-location.txt
+
+# ===== 参考项目 =====
+# 只读参考用的第三方工程（105 MB），不是本项目的一部分，不入库。
+# 它只提供设计参考，不参与构建。
+/ref/
+
+# ===== 编辑器与系统 =====
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+
+# ===== 本地临时数据 =====
+/tmp/
+/.temp/
+*.log
+
+# ===== 本地敏感配置（预防性：仓库里目前没有这类文件）=====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+.claude/

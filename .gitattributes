@@ -1,0 +1,9 @@
+# 统一换行符：仓库内一律用 LF，避免 Windows 上每次提交都刷一堆
+# "LF will be replaced by CRLF" 警告。
+# 例外：.ps1 在 Windows 上运行，保持 CRLF 更符合平台习惯。
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.ico binary
+*.jpg binary
+*.mp4 binary

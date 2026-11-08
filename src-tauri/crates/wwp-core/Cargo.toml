@@ -1,0 +1,90 @@
+[package]
+name = "wwp-core"
+version = "1.14.0"
+edition = "2021"
+description = "WindowsWallPaper 引擎：路径、配置、索引、壁纸呈现。不依赖 tauri，可无窗口测试。"
+
+# 刻意不依赖 `tauri`：引擎必须能脱离窗口单独测试，外壳通过命令白名单访问它。
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 保留用户手写注释：settings.toml 是要给人看的，保存时不能把注释吃掉。
+# 需要 serde 特性才有 de/ser 模块。
+toml_edit = { version = "0.22", features = ["serde"] }
+log = "0.4"
+# 只读图像头部拿尺寸，不解码整图。WIC 太慢（参考项目实测过），因此自己解析。
+imagesize = "0.13"
+# EXIF 方向：需要按方向建立索引，否则竖拍照片的宽高是反的。
+kamadak-exif = "0.6"
+# 目录遍历。相比手写递归，它正确处理长路径与错误回调。
+walkdir = "2"
+# 扫描是有界并行：每个 worker 会打开文件并做头部解析，不能无限制地起线程。
+rayon = "1"
+# 注：原先还有个 `regex`（排除规则支持正则）。用户只通过图库页的目录复选框
+# 排除目录，正则那一套连同「排除规则」页一起删掉了，依赖也一并移除。
+
+# 解码与重采样。只有"真正要显示的那一张"会被解码，因此这里的成本是按屏、
+# 按次发生的，不会随图库规模增长。
+#
+# 只启用确实需要的编解码器：多一个 codec 就多一份编译时间与二进制体积。
+# BMP、JPEG 是**编码**方向必需的——壁纸最终要落成文件交给系统；
+# 写入临时文件用的也是 BMP。
+[dependencies.image]
+version = "0.25"
+default-features = false
+features = ["jpeg", "png", "bmp", "webp"]
+
+# SIMD 重采样。参考项目实测：标量版重采样会让程序比它替代掉的 Python 还慢。
+# 壁纸是"放大到全屏"的操作，重采样就是这条路径上最热的环节。
+[dependencies.fast_image_resize]
+version = "6"
+features = ["image"]
+
+# Windows 平台 API。只在这个 crate 里直接用 Win32，外壳不碰。
+#
+# 版本与参考项目保持一致（Tauri 自身也解析到同一版本），避免同时存在两个
+# 互不兼容的 HWND newtype。
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61.3"
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_DirectComposition",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
+    # IMMDeviceEnumerator/IMMDevice 在这个子 feature 下（MMDevice API）。
+    "Win32_Media_Audio_Endpoints",
+    # WAVEFORMATEX 与 WAVE_FORMAT_PCM 在 Audio 模块里；Multimedia 只在需要
+    # 扩展格式（WAVEFORMATEXTENSIBLE）时才要。这里先不启，减少编译面。
+    "Win32_Media_KernelStreaming",
+    "Win32_Media_MediaFoundation",
+    # 全局快捷键：RegisterHotKey / UnregisterHotKey 在 Input\KeyboardAndMouse 下。
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    # SHBrowseForFolderW / BROWSEINFOW 在 Shell_Common 子模块里；
+    # SHOpenFolderAndSelectItems（打开所在目录并选中）与 SHParseDisplayName
+    # 也要 Shell_Common 里的 ITEMIDLIST，二者缺一不可。
+    "Win32_UI_Shell_Common",
+    # GetOpenFileNameW（安全模式选图）在 Controls\Dialogs 下。
+    "Win32_UI_Controls_Dialogs",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
+    # 剪贴板：OpenClipboard / EmptyClipboard / SetClipboardData。
+    "Win32_System_DataExchange",
+    # 剪贴板内存块：GlobalAlloc / GlobalLock / GlobalUnlock。
+    "Win32_System_Memory",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    # CreateMutexW（单实例门闩）的参数类型 SECURITY_ATTRIBUTES 在 Security 下：
+    # windows crate 把这两个 API 一起放在 `Win32_Security` 这个 feature 里，
+    # 不启它连函数都导入不到。启的是**同一个 crate 的另一个模块**，不是新依赖。
+    "Win32_Security",
+]

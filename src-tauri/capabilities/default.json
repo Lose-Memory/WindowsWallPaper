@@ -1,0 +1,34 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "主窗口的权限（说明见下面的 $comment）",
+  "$comment": [
+    "## 为什么这个文件是必需的（而不是可选的样板）",
+    "",
+    "Tauri 2 把「前端能做哪些事」拆成两类，而它们的要求**不一样**：",
+    "",
+    "  - 命令（invoke('library_scan') 之类）：由 generate_handler![] 注册，",
+    "    前端直接就能调，**不需要**在这里授权；",
+    "  - 事件（listen('wwp://scan-progress')）：属于核心插件 core:event，",
+    "    **必须**在这里显式授权，否则调用会被拒绝。",
+    "",
+    "这个区别造成过一个很难查的问题：图库页的进度条**只**依赖事件订阅，",
+    "而右上角的扫描浮窗走的是 library_scan_status 命令轮询。结果浮窗能正常",
+    "显示进度、图库页的卡片却一直停在「正在准备…」——两套机制一套好一套坏，",
+    "而后端日志显示扫描完全正常。",
+    "",
+    "更麻烦的是：listen() 被拒绝时，前端原来的写法是 void listen(...).then(...)",
+    "（没有 catch），因此失败是静默的，界面上看不出任何异常，只是永远收不到事件。",
+    "",
+    "因此这里显式授权事件权限，并且前端也补上了订阅成功/失败的日志——",
+    "两层都做，避免同类问题再次变成「看起来没坏但就是不工作」。"
+  ],
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit"
+  ]
+}

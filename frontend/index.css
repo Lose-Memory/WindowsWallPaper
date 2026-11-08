@@ -1,0 +1,2301 @@
+@import "tailwindcss";
+
+/* ============================================================================
+ * 界面配色与观感
+ *
+ * ## 为什么是不透明背景（而不是 Mica/玻璃）
+ *
+ * 首版曾把窗口设为透明、让页面透出系统 Mica 材质，看起来更"Win11"。
+ * 但实测下来有两个实际问题：
+ *   1. 文字与桌面内容混在一起，浅色壁纸下几乎看不清；
+ *   2. Mica 效果依赖窗口透明，而透明窗口在某些显卡/缩放下会失效，
+ *      失效时就是"什么都看不见"。
+ * 因此保持**不透明**背景，保证任何壁纸下都清晰可读。
+ *
+ * ## 这一版做了什么
+ *
+ * 上一版的观感偏"工程工具"：全是灰底 + 1px 边框 + 五号字，没有层次与重点。
+ * 现在统一了这几件事，让界面像成品软件：
+ *   - 一套**强调色**（--wwp-accent）只用在"当前在哪里、主操作是什么"上，
+ *     其余地方一律中性色，避免到处抢眼；
+ *   - 卡片有圆角与两层极淡的阴影，页面底色比卡片稍深，靠这个分层而不是靠描边；
+ *   - 文字分三级（正文 / 次要 / 更弱），用不透明度而不是新颜色，深色模式自动适配；
+ *   - 所有可点元素都有 hover 与 focus-visible 状态——键盘操作时也要看得见焦点。
+ * ==========================================================================*/
+
+:root {
+  color-scheme: light dark;
+
+  --wwp-accent: #2f6bed;
+  --wwp-accent-strong: #1f56cf;
+  --wwp-accent-soft: rgb(47 107 237 / 0.1);
+  --wwp-on-accent: #ffffff;
+
+  --wwp-text: #191b20;
+  --wwp-dim: rgb(25 27 32 / 0.62);
+  --wwp-faint: rgb(25 27 32 / 0.45);
+
+  --wwp-bg: #f3f4f7;
+  --wwp-sidebar: #eceef3;
+  --wwp-card: #ffffff;
+  --wwp-surface: rgb(25 27 32 / 0.04);
+  --wwp-surface-strong: rgb(25 27 32 / 0.08);
+  --wwp-border: rgb(25 27 32 / 0.1);
+  --wwp-border-soft: rgb(25 27 32 / 0.06);
+
+  --wwp-ok: #1a8f4a;
+  --wwp-ok-soft: rgb(26 143 74 / 0.12);
+  --wwp-warn: #b1761a;
+  --wwp-warn-soft: rgb(177 118 26 / 0.14);
+  --wwp-bad: #cf3b2f;
+  --wwp-bad-soft: rgb(207 59 47 / 0.12);
+
+  /* **实心**的成功/危险按钮（回收站里的「恢复」＝绿底、「删除」＝红底）。
+   * 与上面那三个是两类东西：`--wwp-ok` / `--wwp-bad` 是"文字与描边"用的颜色，
+   * 直接拿来当底色会与文字糊在一起；实心底色必须自己配一个对比度足够的文字色。
+   * 值与 NSFW 那组实心色一致（同一个绿、同一个红），但语义上分开命名——
+   * 以后调 NSFW 的颜色不该顺手改掉回收站按钮。 */
+  --wwp-ok-solid: #1a8f4a;
+  --wwp-ok-solid-strong: #14713a;
+  --wwp-bad-solid: #cf3b2f;
+  --wwp-bad-solid-strong: #ad2f26;
+  --wwp-on-solid: #ffffff;
+
+  /* NSFW 按钮（绿 = 未开启，红 = NSFW 模式中）。
+   * 单独一组变量而不是复用 --wwp-ok/--wwp-bad：那两个是"文字/描边"用的颜色，
+   * 而这里是**实心底色**，需要各自配一个对比度足够的文字色与悬停色。 */
+  --wwp-nsfw: #1a8f4a;
+  --wwp-nsfw-strong: #14713a;
+  --wwp-nsfw-on: #cf3b2f;
+  --wwp-nsfw-on-strong: #ad2f26;
+  --wwp-on-nsfw: #ffffff;
+
+  --wwp-radius: 12px;
+  --wwp-radius-sm: 8px;
+  --wwp-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 8px 24px -12px rgb(16 24 40 / 0.18);
+  --wwp-shadow-pop: 0 10px 30px -6px rgb(16 24 40 / 0.28);
+
+  font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wwp-accent: #6f93ff;
+    --wwp-accent-strong: #8aa8ff;
+    --wwp-accent-soft: rgb(111 147 255 / 0.16);
+    --wwp-on-accent: #0d1424;
+
+    --wwp-text: #e9eaef;
+    --wwp-dim: rgb(233 234 239 / 0.64);
+    --wwp-faint: rgb(233 234 239 / 0.45);
+
+    --wwp-bg: #15161a;
+    --wwp-sidebar: #1b1d22;
+    --wwp-card: #212329;
+    --wwp-surface: rgb(255 255 255 / 0.05);
+    --wwp-surface-strong: rgb(255 255 255 / 0.1);
+    --wwp-border: rgb(255 255 255 / 0.1);
+    --wwp-border-soft: rgb(255 255 255 / 0.06);
+
+    --wwp-ok: #4fd07f;
+    --wwp-ok-soft: rgb(79 208 127 / 0.16);
+    --wwp-warn: #e2b45c;
+    --wwp-warn-soft: rgb(226 180 92 / 0.16);
+    --wwp-bad: #ff8074;
+    --wwp-bad-soft: rgb(255 128 116 / 0.16);
+
+    /* 深色模式下的实心按钮：绿色稍微提亮（否则深色底上的按钮显得脏），
+     * 红色同样提亮，避免与背景糊成一团。文字始终是白色。 */
+    --wwp-ok-solid: #2a9557;
+    --wwp-ok-solid-strong: #33ad66;
+    --wwp-bad-solid: #c8453a;
+    --wwp-bad-solid-strong: #d9564a;
+    --wwp-on-solid: #ffffff;
+
+    /* 深色模式下同样是实心底色 + 白字：绿色比浅色模式稍微提亮一点，
+     * 否则深色底上的按钮会显得脏；红色也提亮，避免糊成一团。 */
+    --wwp-nsfw: #2a9557;
+    --wwp-nsfw-strong: #33ad66;
+    --wwp-nsfw-on: #c8453a;
+    --wwp-nsfw-on-strong: #d9564a;
+    --wwp-on-nsfw: #ffffff;
+
+    --wwp-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px -14px rgb(0 0 0 / 0.6);
+    --wwp-shadow-pop: 0 12px 34px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  /* 不透明底色：这是"文字看得清"的根本保证。 */
+  background: var(--wwp-bg);
+}
+
+body {
+  color: var(--wwp-text);
+  user-select: none;
+  overflow: hidden;
+}
+
+/* ---------- 外壳 ---------- */
+.wwp-shell {
+  display: flex;
+  /* 宽度锁死在视口上：任何内部超宽内容都不允许把整页撑出去。 */
+  width: 100%;
+  max-width: 100vw;
+  height: 100%;
+  overflow: hidden;
+}
+
+.wwp-sidebar {
+  /* 宽度是量出来的，不是随手定的：品牌那一行 `WindowsWallPaper`（15px 半粗）
+   * 加上图标、间距与两侧内边距，在 196px 下正好顶到右边缘——真机上（WebView2
+   * 的字号/度量与无头浏览器不完全一致）末尾会被裁掉一点，用户报的就是这个。
+   * 232px 留出约 35px 余量；导航项一个字只有 16px 宽，也不会因此显得空。 */
+  flex: 0 0 232px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 10px;
+  background: var(--wwp-sidebar);
+  border-right: 1px solid var(--wwp-border-soft);
+}
+
+.wwp-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  padding: 6px 10px 16px;
+}
+
+/* 品牌标记用的是软件自己的图标（scripts/make-icon.ps1 生成）。
+   圆角 + object-fit: cover 让它和界面整体风格一致，而不是一张生硬的方图。 */
+.wwp-brand-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+}
+
+/*
+ * 左侧导航的字号**刻意比右侧正文大**（用户 2026-10 的要求）。
+ *
+ * 右侧正文是 13px（`.wwp-row` / `.wwp-btn` / `.wwp-input` 都是），
+ * 这里给 16px：导航是"我在哪一页"的定位信息，比页面内的细节文字更需要一眼看清。
+ * 以后若有人调小它，请先确认它仍然**大于** 13px——那不是"顺手改个数字"。
+ */
+.wwp-nav {
+  appearance: none;
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: var(--wwp-dim);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--wwp-radius-sm);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.wwp-nav:hover {
+  background: var(--wwp-surface);
+  color: var(--wwp-text);
+}
+
+.wwp-nav-active {
+  background: var(--wwp-accent-soft);
+  color: var(--wwp-accent);
+  font-weight: 600;
+}
+
+/* 选中项左侧的小竖条：比整块变色更克制，也更容易一眼定位。 */
+.wwp-nav-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--wwp-accent);
+}
+
+.wwp-sidebar-foot {
+  margin-top: auto;
+  padding: 10px;
+  font-size: 11px;
+  color: var(--wwp-faint);
+}
+
+.wwp-content {
+  flex: 1 1 auto;
+  /* min-width: 0 是关键：flex 子项默认 min-width:auto，内容（长路径字符串）
+     会把它撑得比可用宽度还宽，整页于是横向溢出、右侧被裁掉。 */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  /* 横向永不滚动：宁可截断长路径，也不要让卡片跑出窗口外。 */
+  overflow-x: hidden;
+  /*
+   * 滚动条**始终占位**（用户报的"点关联图库时左侧文字栏变宽变窄"就是它）。
+   *
+   * 那一页在窗口里本来正好放得下；一点开某个列表的图库面板，页面变高，
+   * 竖直滚动条出现，内容区因此窄了十几个像素——于是名字输入框被挤短，
+   * 整行的控件左右挪一下。这跟"面板打开了"没有任何关系，纯粹是滚动条
+   * 的宽度问题。
+   *
+   * `scrollbar-gutter: stable` 让浏览器**一直**把那条宽度留出来，
+   * 因此有没有滚动条，页面宽度都不变（没滚动条时留白，看起来也没差别）。
+   * 在覆盖式滚动条（不自占宽度）的系统上它本来就没有位移，这条也无害。
+   */
+  scrollbar-gutter: stable;
+  padding: 22px 24px 36px;
+}
+
+/* 页面内的所有块级内容都不得横向溢出。 */
+.wwp-content * {
+  max-width: 100%;
+}
+
+/* ---------- 排版 ---------- */
+.wwp-page-head {
+  margin-bottom: 18px;
+}
+
+.wwp-title {
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  margin: 0 0 5px;
+}
+
+.wwp-h2 {
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  margin: 0 0 10px;
+}
+
+.wwp-sub {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: var(--wwp-dim);
+  line-height: 1.6;
+}
+
+.wwp-dim {
+  font-size: 12px;
+  color: var(--wwp-dim);
+}
+
+.wwp-bad {
+  color: var(--wwp-bad);
+}
+
+.wwp-pre {
+  white-space: pre-wrap;
+  user-select: text;
+  background: var(--wwp-surface);
+  padding: 12px;
+  border-radius: var(--wwp-radius-sm);
+  font-size: 12px;
+}
+
+.wwp-ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.wwp-ul li {
+  margin: 2px 0;
+}
+
+/* ---------- 卡片与行 ---------- */
+/*
+ * 每张卡片顶部都有一道**强调色渐变**（用户 2026-10-05 的要求）。
+ *
+ * 原先只有播放页的第一张卡片（`.wwp-card-hero`）有它，其它卡片是纯底色，
+ * 于是"有渐变的那张"与"没有的那些"看起来像两个不同版本做出来的界面。
+ * 用户要求把这个样式用到所有同类模块上——现在渐变写在 `.wwp-card` 上，
+ * 全程序一致；`.wwp-card-hero` 只是把同一道渐变加深一点，
+ * 让"主要操作"那张仍然最显眼（不再是"有/没有"的区别）。
+ *
+ * 渐变必须在**卡片底色之上**淡出到透明色，否则深色模式下会变成一块色斑：
+ * 因此第二站用的是 `--wwp-card`（不透明），而不是 `transparent`。
+ */
+.wwp-card {
+  border-radius: var(--wwp-radius);
+  border: 1px solid var(--wwp-border-soft);
+  background: linear-gradient(
+    180deg,
+    var(--wwp-accent-soft) 0%,
+    var(--wwp-card) 46%
+  );
+  box-shadow: var(--wwp-shadow);
+  /* 首版去掉 `backdrop-filter: blur()` 毛玻璃：
+     它只在"背后有内容可模糊"时才有观感，而卡片是不透明的、
+     背后就是页面底色——留着它只是白花一次离屏合成。 */
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  /* 内容再长也不撑破卡片。 */
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 主操作卡片（轮播启停）：同一道渐变，但更浓、拖得更长，靠它把"这块是主要的"说出来。 */
+.wwp-card-hero {
+  background: linear-gradient(
+    180deg,
+    var(--wwp-accent-soft) 0%,
+    var(--wwp-card) 62%
+  );
+  border-color: var(--wwp-border);
+}
+
+.wwp-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.wwp-label {
+  flex: 0 0 116px;
+  color: var(--wwp-dim);
+  font-size: 12.5px;
+  /* 标签不长，但不允许它被压成两行。 */
+  white-space: nowrap;
+}
+
+.wwp-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  word-break: break-all;
+  user-select: text;
+}
+
+/* 把一行里的东西推到两端（例如"状态在左、按钮在右"）。 */
+.wwp-spacer {
+  flex: 1 1 auto;
+}
+
+.wwp-note {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wwp-border-soft);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--wwp-dim);
+}
+
+.wwp-warn {
+  border-radius: var(--wwp-radius-sm);
+  border: 1px solid rgb(177 118 26 / 0.4);
+  background: var(--wwp-warn-soft);
+  padding: 11px 13px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.wwp-error {
+  border-radius: var(--wwp-radius-sm);
+  border: 1px solid rgb(207 59 47 / 0.4);
+  background: var(--wwp-bad-soft);
+  padding: 11px 13px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.wwp-ok-box {
+  border-radius: var(--wwp-radius-sm);
+  border: 1px solid rgb(26 143 74 / 0.4);
+  background: var(--wwp-ok-soft);
+  padding: 11px 13px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+/* ---------- 按钮与输入 ---------- */
+.wwp-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wwp-text);
+  background: var(--wwp-surface);
+  border: 1px solid var(--wwp-border);
+  border-radius: var(--wwp-radius-sm);
+  padding: 6px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+}
+
+.wwp-btn:hover:not(:disabled) {
+  background: var(--wwp-surface-strong);
+}
+
+.wwp-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.wwp-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wwp-btn:focus-visible {
+  outline: 2px solid var(--wwp-accent);
+  outline-offset: 2px;
+}
+
+.wwp-btn-primary {
+  background: var(--wwp-accent);
+  border-color: transparent;
+  color: var(--wwp-on-accent);
+  font-weight: 600;
+  box-shadow: 0 2px 10px -2px var(--wwp-accent-soft);
+}
+
+.wwp-btn-primary:hover:not(:disabled) {
+  background: var(--wwp-accent-strong);
+}
+
+.wwp-btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--wwp-dim);
+}
+
+.wwp-btn-quiet:hover:not(:disabled) {
+  background: var(--wwp-surface);
+  color: var(--wwp-text);
+}
+
+/* "这个按钮当前是开着的"——例如「选择目录…」在目录树展开时的样子。
+ *
+ * 之前展开与否只体现在按钮文字上（"选择目录…" → "收起目录"），
+ * 在一排灰色按钮里几乎注意不到，用户会以为点了没反应。
+ * 现在用强调色把它点亮：状态与文字一起表达。 */
+.wwp-btn-on {
+  background: var(--wwp-accent-soft);
+  border-color: var(--wwp-accent);
+  color: var(--wwp-accent);
+  font-weight: 600;
+}
+
+/* 文字会变的按钮（选择目录…/收起目录、扫描/重新扫描、关联图库…/收起）：
+ * **给一个固定宽度**，两种文字都在同一个盒子里居中。
+ *
+ * 用户报过："点击选择目录和关联图库的按钮时，其所在行的 UI 会调整一次——
+ * 主要是最左侧的目录位置和播放列表名称的位置。"根因就是这些按钮的**宽度**
+ * 随文字变：它们所在的那一列（flex/grid 的 auto 列）跟着变宽变窄，
+ * 于是左边那条伸缩列被挤，路径文本重新截断、旁边控件左右挪。
+ *
+ * 宽度按最长的那个标签量出来（"选择目录…" ≈ 85px），给到 96px 留一点余量；
+ * 短标签（"收起"、"移除"）居中显示，看起来仍然整齐。 */
+.wwp-btn-stable {
+  min-width: 96px;
+  justify-content: center;
+}
+
+/* "这个按钮会去掉一样东西"——例如图库行上的「移除」。
+ *
+ * 用危险色的**文字**而不是实心红底：图库行里一排按钮，实心红会把整行的
+ * 重点全抢过去，而这个按钮很少点。悬停时才给一层淡红底，确认"就是它"。
+ * 它必须写在 `.wwp-btn-quiet` 之后（两者同权重，靠顺序取胜）。 */
+.wwp-btn-danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--wwp-bad);
+}
+
+.wwp-btn-danger:hover:not(:disabled) {
+  background: var(--wwp-bad-soft);
+  color: var(--wwp-bad);
+}
+
+.wwp-btn-on:hover:not(:disabled) {
+  background: var(--wwp-accent-soft);
+  border-color: var(--wwp-accent-strong);
+}
+
+.wwp-input {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  background: var(--wwp-surface);
+  border: 1px solid var(--wwp-border);
+  border-radius: var(--wwp-radius-sm);
+  padding: 7px 11px;
+  width: 100%;
+  box-sizing: border-box;
+  user-select: text;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.wwp-input:hover {
+  border-color: var(--wwp-surface-strong);
+}
+
+.wwp-input:focus {
+  outline: none;
+  border-color: var(--wwp-accent);
+  box-shadow: 0 0 0 3px var(--wwp-accent-soft);
+}
+
+/* 下拉箭头：默认的三角在深色模式下几乎看不见，这里自己画一个。 */
+select.wwp-input {
+  background-image: linear-gradient(45deg, transparent 50%, var(--wwp-dim) 50%),
+    linear-gradient(135deg, var(--wwp-dim) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+/*
+ * ============ 下拉菜单的可读性（实测踩过） ============
+ *
+ * 现象：展开播放列表时，弹层是**浅色**的，而选项文字是**浅色**的——
+ * 几乎读不出来（用户截图反馈："看不清文字的内容"）。
+ *
+ * 原因有两层，缺一不可：
+ *
+ *   1. `.wwp-input` 的 `color: inherit` 让 `<select>` 继承了深色模式下的
+ *      浅色文字（`--wwp-text` = #e9eaef）；而弹层列表是由**浏览器自己**画在
+ *      一个独立表面上的，它不跟随我们的卡片底色。
+ *   2. `<option>` 完全没被样式覆盖，于是弹层的底色取了浏览器默认（浅色），
+ *      文字取了上面那个浅色 → 浅色压浅色。
+ *
+ * 修法：**显式给 select 与 option 同时指定不透明底色与文字色**，
+ * 并给 select 声明 `color-scheme`，让弹层的滚动条、高亮条也跟着配色走。
+ * 只改一边没用：只改 select 的 color，弹层底色还是默认；只改 option 的底色，
+ * 深色模式下又会与界面不搭。
+ */
+select.wwp-input {
+  color: var(--wwp-text);
+  /* 不透明底色：弹层与控件本身都不再依赖"底下是什么"。 */
+  background-color: var(--wwp-card);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  select.wwp-input {
+    color-scheme: dark;
+  }
+}
+
+select.wwp-input option {
+  background-color: var(--wwp-card);
+  color: var(--wwp-text);
+}
+
+/* 选中/悬停的那一项由系统高亮条覆盖，文字保持我们指定的颜色即可。 */
+select.wwp-input option:checked {
+  background-color: var(--wwp-accent);
+  color: var(--wwp-on-accent);
+}
+
+/* ---------- 状态胶囊 ---------- */
+.wwp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--wwp-surface);
+  border: 1px solid var(--wwp-border);
+  color: var(--wwp-dim);
+  white-space: nowrap;
+}
+
+/* 胶囊左侧的小圆点：状态色靠它表达，文字本身仍然是中性色。 */
+.wwp-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+}
+
+.wwp-pill-on {
+  background: var(--wwp-ok-soft);
+  border-color: transparent;
+  color: var(--wwp-ok);
+}
+
+.wwp-pill-warn {
+  background: var(--wwp-warn-soft);
+  border-color: transparent;
+  color: var(--wwp-warn);
+}
+
+/* ---------- 开关行 ---------- */
+.wwp-switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wwp-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 10px;
+  border-radius: var(--wwp-radius-sm);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.wwp-switch:hover {
+  background: var(--wwp-surface);
+}
+
+.wwp-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wwp-switch-label {
+  font-size: 13px;
+}
+
+/* ---------- 清理程序目录（设置页） ---------- */
+/* 一行一项：左边勾选框，右边"名字 + 大小"一行、说明一行。
+   与开关行同一套观感（都是"一列可勾的东西"），但每一项有两行文字，
+   因此不用 `.wwp-switch` 那套（它假定只有一行）。 */
+.wwp-cleanup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.wwp-cleanup-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--wwp-radius-sm);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.wwp-cleanup-item:hover {
+  background: var(--wwp-surface);
+}
+
+.wwp-cleanup-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+/* 名字与大小同一行：大小贴右，但**不**用 space-between 吃掉整行——
+   说明文字要能与名字左对齐，否则两行看起来是两块无关的内容。 */
+.wwp-cleanup-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.wwp-cleanup-head .wwp-value {
+  color: var(--wwp-dim);
+}
+
+/* 复选框做成开关的样子。
+   用 `appearance: none` 把原生控件整个接管，再用 ::after 画滑块——
+   这样不用额外的 DOM，也不用为了"好看"引入一个组件库。 */
+.wwp-check {
+  appearance: none;
+  flex: 0 0 auto;
+  position: relative;
+  width: 40px;
+  height: 22px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--wwp-surface-strong);
+  border: 1px solid var(--wwp-border);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.wwp-check::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--wwp-card);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  transform: translateY(-50%);
+  transition: left 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wwp-check:checked {
+  background: var(--wwp-accent);
+  border-color: transparent;
+}
+
+.wwp-check:checked::after {
+  left: 21px;
+}
+
+.wwp-check:focus-visible {
+  outline: 2px solid var(--wwp-accent);
+  outline-offset: 2px;
+}
+
+/* 普通复选框（目录树里那些）。 */
+.wwp-tree-row input[type="checkbox"],
+.wwp-playlist-libs input[type="checkbox"] {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid var(--wwp-border);
+  background: var(--wwp-card);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+}
+
+.wwp-tree-row input[type="checkbox"]:checked,
+.wwp-playlist-libs input[type="checkbox"]:checked {
+  background: var(--wwp-accent);
+  border-color: transparent;
+}
+
+.wwp-tree-row input[type="checkbox"]:checked::after,
+.wwp-playlist-libs input[type="checkbox"]:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--wwp-on-accent);
+  border-bottom: 2px solid var(--wwp-on-accent);
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+/* ---------- 每屏的数据小块 ---------- */
+/*
+ * 每屏底部那几个数字块（已切换 / 候选 / 最近错误 / 模式）。
+ *
+ * 用户 2026-10 的要求是"已切换的信息跟在后面，不要折行，候选部分也是"：
+ * 原来是**上下两行**（标签一行、数值一行），现在标签与数值**同一行**并排，
+ * 而且整块 `white-space: nowrap`——数字再长也不会被拆成两行
+ * （一行放不下时是这一块整体挪到下一行，那是 flex-wrap 的事）。
+ *
+ * 宽度改成按内容定（`flex: 0 0 auto`）：原来 `flex: 1 1 96px` 会把整行均分，
+ * 内容短的块被拉得很宽、内容长的块反而被挤到折行。
+ */
+.wwp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 2px;
+}
+
+.wwp-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border-radius: var(--wwp-radius-sm);
+  background: var(--wwp-surface);
+  white-space: nowrap;
+}
+
+.wwp-stat-key {
+  font-size: 11px;
+  color: var(--wwp-faint);
+}
+
+.wwp-stat-value {
+  font-size: 12.5px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+/*
+ * "当前显示"那一块可以点：点一下把完整路径复制到剪贴板。
+ *
+ * 视觉上必须让人看出它是可点的（否则这就是一个"藏起来的功能"）：
+ * 用虚线下划线 + 指针光标，悬停时换成强调色。底下的 `.wwp-stat` 不加背景，
+ * 因此这里补一个很淡的悬停底色，让可点范围一目了然。
+ *
+ * `.wwp-shot-copy` 是播放页预览格里那行路径（2026-10 起"当前显示"从数据小块
+ * 升级成了预览格）：同一件事的两种呈现，样式必须一致，否则用户会以为
+ * 预览格里的路径不可点。
+ *
+ * 2026-10 追加、1.11.0 改动：预览格里**缩略图**与**路径行**现在是两个各自
+ * 独立的点击目标（点图 = 打开这张图 / 切到这一张，点路径 = 打开它所在的文件夹
+ * 并选中它）。因此这条路的下划线只表示"这一行可点"，缩略图那一边的悬停/按下
+ * 反馈由 `.wwp-shot-openable` 给（见下）——不要再把整格当成一个点击目标。
+ */
+.wwp-stat-copy,
+.wwp-shot-copy {
+  cursor: pointer;
+  text-decoration: underline dotted var(--wwp-faint);
+  text-underline-offset: 3px;
+  border-radius: 4px;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.wwp-stat-copy:hover,
+.wwp-shot-copy:hover {
+  color: var(--wwp-accent);
+  background: var(--wwp-accent-soft);
+}
+
+.wwp-stat-copy:active,
+.wwp-shot-copy:active {
+  transform: translateY(1px);
+}
+
+/* 只在"当前显示"一项时淡一点，避免一个小块孤零零地占满整行。 */
+.wwp-stats-quiet .wwp-stat {
+  background: transparent;
+  padding-left: 0;
+}
+
+/*
+ * 每屏的四个信息行（播放列表 / 列表设置 / 固定单图 / NSFW 壁纸）**共用一个网格**。
+ *
+ * ## 为什么是一个网格（用户 2026-10 的两条要求）
+ *
+ * 用户要求①"保持文字和右侧的方框合理紧密接触，不要让 UI 出现大面积的空白"、
+ * ②"播放列表后面的方框太短了……一定要和下面两个一样长"。第一版是四行 `.wwp-row`，
+ * 每行各自 flex：标签是固定的 116px 列（标签只有 52px 宽，于是方框与文字之间
+ * 空着 60 多像素），而方框靠 `calc(100% - 160px)` 预留按钮位——播放列表那行
+ * 没有按钮，那个预留就白空着，实测它甚至只有 70px 宽（`<select>` 被 Tooltip
+ * 锚点包着时长度的百分比会落到"由内容决定"的宽度上）。
+ *
+ * 现在：
+ * - 标签列 `max-content`——这四个标签**都是四个汉字**，宽度天然一致，
+ *   因此方框左边缘仍然对齐，同时不再留那段空档；
+ * - 方框列是整个网格**共享的一条 `1fr`**：三行的方框必然同宽（各自成网格时
+ *   按钮个数不同会算出不同宽度），而且吃掉标签列缩掉之后腾出来的全部宽度；
+ * - 按钮列 `max-content`：由最宽的那组按钮（选择图片… + 清除）定，
+ *   没有按钮的行就让这两列空着——播放列表那行的方框因此与下面两行**一样长**。
+ *
+ * 每个格子用 `grid-column` 显式落位（见下面 `.wwp-cell-*`）：
+ * 靠自动排列的话，某一行的格子数不同会让后面的行"挤上来"。
+ */
+.wwp-monitor-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+/* 四个格子的落位。`.wwp-cell-wide` 给「列表设置」那一行的值：横跨后面的按钮列，
+ * 因此长句子仍然占满整行宽度。 */
+.wwp-cell-label {
+  grid-column: 1;
+}
+.wwp-cell-value {
+  grid-column: 2;
+  min-width: 0;
+}
+.wwp-cell-btn-a {
+  grid-column: 3;
+}
+.wwp-cell-btn-b {
+  grid-column: 4;
+}
+.wwp-cell-wide {
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+/* 方框撑满自己那一列（三行因此左右都对齐）。
+ * `max-width: none` 顶掉 `.wwp-input-sm` 的 320px 上限——虽然在两列布局下
+ * 够不到，但窗口拉宽、卡片变宽之后它就会开始限制方框，那时三行会一起被限住。 */
+.wwp-monitor-fields .wwp-monitor-field {
+  width: 100%;
+  max-width: none;
+}
+
+/* ---------- 每屏的壁纸预览（当前 / 下一张） ---------- */
+/*
+ * 用户 2026-10 的要求：播放页每块屏要能**看见**正在播的那张壁纸，
+ * 以及下一张即将切换的壁纸（在那之前只有一行文件名）。
+ *
+ * ## 为什么是并排两格、宽度平分
+ *
+ * "现在这张 → 下一张那张"要放在一起看才有意义；上下堆叠会把卡片拉长一倍，
+ * 两块屏并排时就得滚很久。两个格子都用 `minmax(0, 1fr)` 平分卡片宽度，
+ * 因此两块屏的卡片各宽各窄时，格子跟着卡片走，**不会**互相挤出边界。
+ *
+ * ## 为什么缩略图用 contain 而不是 cover
+ *
+ * 壁纸有横有竖（用户的竖屏就是一整块 1440×2560）。cover 会把竖图裁成一条，
+ * "这张图好不好看"就看不出来了；contain 完整显示，留一点底色边。
+ *
+ * ## 这一块必须"一个像素都不溢出"
+ *
+ * 界面上出现拥挤/折行多数来自长文件名。这里的对策是三层：
+ *   1. 每一行的直接子项都 `white-space: nowrap`（标签、倒计时不折行）；
+ *   2. 路径用 `.wwp-path-ellipsis`（从开头截断，保留能分辨图片的结尾）；
+ *   3. 预览框的说明文字也 nowrap + 省略号，而不是折成两行把框撑高。
+ */
+.wwp-shot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+.wwp-shot {
+  min-width: 0;
+}
+
+.wwp-shot-cap {
+  display: flex;
+  align-items: baseline;
+  /* 标签在最左、状态与倒计时一起靠右（见 `.wwp-shot-label` 的 `margin-right: auto`）。
+   * 用 `flex-start` + 自动外边距而不是 `space-between`：后者在三个子项时会
+   * 把状态字样排到**正中间**，与倒计时分开——用户要的是"显示在旁边"。 */
+  justify-content: flex-start;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+/* 标签把剩下的空间全部吃掉，于是后面的子项被推到最右边、彼此紧邻。 */
+.wwp-shot-label {
+  font-size: 11px;
+  color: var(--wwp-faint);
+  margin-right: auto;
+}
+
+/* 标签与倒计时都不许折行：这一行只有两个字 + "已暂停 34 秒后"，
+ * 折行只可能是因为被挤扁了，而那正是要暴露出来的问题。 */
+.wwp-shot-cap > * {
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.wwp-shot-badge {
+  font-size: 11px;
+  color: var(--wwp-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 「已暂停」（或将来别的状态字样）：与倒计时**并排**的小胶囊。
+ *
+ * 用描边而不是底色：底色会让它与倒计时抢注意力，而这里要表达的是
+ * "数字为什么不动"，不是"出事了"。 */
+.wwp-shot-paused {
+  font-size: 11px;
+  color: var(--wwp-dim);
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.wwp-shot-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 16:9：一屏的壁纸多数是这个比例，预览框跟着它，留白最少。
+   * 不要改成更方的比例——这块多出来的高度会**翻倍**加到卡片上
+   * （两块屏并排时两张卡片一起变高），播放页就会多出一段滚动。 */
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: var(--wwp-radius-sm);
+  background: var(--wwp-surface);
+  overflow: hidden;
+}
+
+.wwp-shot-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* contain：竖图/横图都完整显示（见上面那段说明）。 */
+  object-fit: contain;
+}
+
+.wwp-shot-empty {
+  max-width: 100%;
+  padding: 0 10px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--wwp-faint);
+  /* ## 为什么这一格要折行（用户 2026-10 的要求）
+   *
+   * 用户原话："现在当壁纸过大时，不会展示预览，这一点我接受，但是此时的文字说明
+   * 看不全，本来应该是展示预览图的地方现在是半句话，这里的文字可以折行，
+   * 完整显示相关信息。"
+   *
+   * 后端那句说明是一整句（"这张图太大（12000×8000），为了不占满内存就不生成
+   * 缩略图了"），而这里原来是 `nowrap` + 省略号——那条规矩是**给标签那一行定的**
+   * （标签与倒计时不许折行，被挤扁了必须暴露出来），搬到这一格就把最关键的后半句
+   * 切掉了。现在改成折行：`overflow-wrap: anywhere` 让超长的文件名与数字也能断开；
+   * 框仍是 16:9、`overflow: hidden`，说明再长也只会被框裁掉，不会撑破卡片。 */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* 路径那一行。字号小一号、等宽字体，与上面那行标签拉开层次。
+ * `display/overflow/...` 来自 `.wwp-path-ellipsis`，这里只补外观。 */
+.wwp-shot-path {
+  margin-top: 3px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 11.5px;
+}
+
+
+/* ---------- 图库列表：表格式排布 ---------- */
+/*
+ * 每行是**三列网格**：路径（伸缩）| 使用情况 | 操作。
+ *
+ * 为什么不用 flex 让内容自由伸缩：长路径会把后面的标签挤成两行，
+ * 各行的标签与按钮位置也就各不相同——看起来"乱"。
+ * 固定列宽之后，所有行的标签与按钮都在同一条竖线上。
+ *
+ * ## 2026-10 的调整（用户要求）
+ *
+ * 用户原话："把右侧的打开目录、重新扫描、全量重扫、选择目录、移除等文字的
+ * 距离拉近，增加左侧显示具体路径的宽度，但是要确保不出现文字的折叠换行。"
+ *
+ * 两条一起做的：
+ *   1. 「打开目录」原先独占第三列（96px 固定宽 + 12px 列间距），现在并进
+ *      操作列里那一组按钮（间距由 `.wwp-cell-actions` 控制，已调小），
+ *      于是少了一列；
+ *   2. 这一行里的按钮做得更紧凑（padding 与字号都小一号），
+ *      三列之外**剩下的宽度全归路径**。
+ *
+ * 「不折行」由两件事保证：`.wwp-btn` 与 `.wwp-tag` 都是 `white-space: nowrap`，
+ * 而路径那列是 `minmax(0, 1fr)`——空间不够时先缩路径（路径本来就从开头截断），
+ * 按钮永远不会被压到换行。
+ */
+.wwp-lib-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: var(--wwp-radius-sm);
+  min-width: 0;
+  transition: background 120ms ease;
+}
+
+/* 这一行里的按钮小一号：五个按钮要挤在一格里，字号与内边距都必须收着点。
+ * 用后代选择器的**权重**（两个类）压过 `.wwp-btn` 自己的 padding。
+ * 文字仍然是 nowrap，因此缩小的是留白，不是把字挤到换行。 */
+.wwp-lib-row .wwp-btn {
+  padding: 5px 9px;
+  font-size: 12.5px;
+}
+
+/* 这一行里"文字会变的按钮"的固定宽度也相应收窄（见 `.wwp-btn-stable` 的说明）。
+ * 88px 是按最长的那个标签量出来的：`选择目录…`。它只是**下限**——
+ * 万一将来字体变了、标签更宽，按钮会自己长宽，而不是让文字溢出。 */
+.wwp-lib-row .wwp-btn-stable {
+  min-width: 88px;
+}
+
+.wwp-lib-row:hover {
+  background: var(--wwp-surface);
+}
+
+/*
+ * ============ 图库行底色：一眼看出"建好索引了没有" ============
+ *
+ * 用户的要求：已建索引的图库给一层淡绿、未建索引的给一层淡红。
+ *
+ * 为什么用整行底色而不是一个标签：这是一个"整行是否可用"的属性——
+ * 没建索引的图库**播不出任何东西**（候选是 0），因此它值得占满整行，
+ * 而不是缩在第三列里。那一列现在让给了「打开目录」。
+ *
+ * 淡到能当背景读（alpha 0.10 ~ 0.14），否则十几行图库会花得看不清路径。
+ */
+.wwp-lib-row-scanned {
+  background: rgb(26 143 74 / 0.1);
+  border-color: rgb(26 143 74 / 0.25);
+}
+
+.wwp-lib-row-unscanned {
+  background: rgb(207 59 47 / 0.08);
+  border-color: rgb(207 59 47 / 0.22);
+}
+
+/* 悬停时仍然要有"这一行可点"的反馈：在底色上再叠一层。 */
+.wwp-lib-row-scanned:hover,
+.wwp-lib-row-unscanned:hover {
+  background: var(--wwp-surface-strong);
+}
+
+@media (prefers-color-scheme: dark) {
+  .wwp-lib-row-scanned {
+    background: rgb(79 208 127 / 0.12);
+    border-color: rgb(79 208 127 / 0.28);
+  }
+
+  .wwp-lib-row-unscanned {
+    background: rgb(255 128 116 / 0.1);
+    border-color: rgb(255 128 116 / 0.26);
+  }
+}
+
+/* Tooltip 组件会在外面套一层 `.wwp-tip-anchor`（inline-block），
+   它才是真正的网格项。要让它能被压缩，否则长路径会撑破整列。 */
+.wwp-lib-row > .wwp-tip-anchor {
+  display: block;
+  min-width: 0;
+}
+
+.wwp-cell-path {
+  min-width: 0;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  user-select: text;
+}
+
+/*
+ * **从开头截断**的路径显示。
+ *
+ * `direction: rtl` 让"溢出的一侧"变成左边，于是 `text-overflow: ellipsis`
+ * 把省略号画在开头——保留的正好是能区分不同图库的那段（结尾的目录名）。
+ *
+ * `text-align: left` 把它钉回左对齐，否则 rtl 会让短路径靠右。
+ *
+ * ## 2026-10 更正：**不要**再写 `unicode-bidi: plaintext`
+ *
+ * 这里原先还写着 `unicode-bidi: plaintext`，理由是"让每个元素按自身内容的
+ * 第一个强方向字符决定方向，否则 bidi 算法会把开头的盘符与反斜杠挪到末尾"。
+ * 但实测（`scripts/check-layout.ps1` 的 `?pathtest=1`，Chromium 154）它**反而
+ * 让省略号回到了右边**：`plaintext` 会把段落方向按内容重新判定成 LTR，
+ * 于是 `direction: rtl` 失效——能分辨图片的那段结尾目录名被截掉了，
+ * 界面上看到的是千篇一律的 `D:\Pictures\…`。
+ *
+ * 去掉它之后，中英混合的 `<盘符>:\中文目录\...` 与纯英文的路径**都**能正确
+ * 保留结尾，而且字符顺序正常（没有出现 `\BT\F:` 那种翻转）。
+ * 判据是那张对比截图：三种写法并排画在同一个宽度里，看哪一段被留下。
+ */
+.wwp-path-ellipsis {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+/* 标签列：不许折行，靠左对齐到自己的列里。 */
+.wwp-cell-tag {
+  justify-self: start;
+  white-space: nowrap;
+}
+
+/* 操作列：按钮靠右，彼此**挨得紧**（用户要求"把……等文字的距离拉近"）。
+ *
+ * 2px 是刻意的小：这些按钮是同一组操作（打开 / 扫描 / 全量 / 选择目录 / 移除），
+ * 挨在一起才看得出来是一组；而且省下来的宽度全给了左边的路径列。 */
+.wwp-cell-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: end;
+}
+
+/* ---------- 失败样本 ---------- */
+.wwp-samples {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 6px;
+}
+/* ---------- 失败样本 ---------- */
+.wwp-samples {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 6px;
+}
+
+.wwp-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0;
+  border-top: 1px dashed var(--wwp-border);
+  font-size: 12px;
+}
+
+.wwp-sample:first-child {
+  border-top: 0;
+}
+
+/* ---------- 排除规则 ---------- */
+.wwp-rule-group {
+  margin-bottom: 12px;
+}
+
+.wwp-rule-title {
+  font-size: 12px;
+  color: var(--wwp-dim);
+  margin-bottom: 6px;
+}
+
+.wwp-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wwp-code {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  background: var(--wwp-surface);
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: 6px;
+  padding: 2px 7px;
+  user-select: text;
+}
+
+/* ---------- 播放页 ---------- */
+/*
+ * 顶部那一行：状态胶囊 + 暂停/上一张/下一张 + NSFW + 重新加载。
+ *
+ * 按钮**之间**的间距（用户 2026-10 要求"适当增加这一行各个按钮之间的距离，
+ * 现在的尺寸保持不变"）：8 → 14px。按钮自己的 padding / 字号一律没动——
+ * 变的只有它们之间的空隙。
+ */
+.wwp-control-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 「全部重新扫描」结果里的一行 ----------
+ *
+ * 左边是图库路径（长了就在**开头**截断，保留能区分图库的结尾那段目录名），
+ * 右边是这一个库的变化统计。两边都不许折行：统计数字折行会很难读。
+ */
+.wwp-scan-lib {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-width: 0;
+  padding: 3px 0;
+  font-size: 12.5px;
+}
+
+/* 路径那一格自己就是 `.wwp-path-ellipsis`（它已经是 display:block + 省略号），
+ * 这里只把它变成可伸缩的一格，并把宽度交回给 flex（默认 width:100% 会顶掉收缩）。 */
+.wwp-scan-lib > .wwp-path-ellipsis {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  color: var(--wwp-dim);
+}
+
+.wwp-scan-lib-changes {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-family: Consolas, "Cascadia Mono", monospace;
+}
+
+/* 预览格的**缩略图**可以单击（用户 2026-10 的要求，1.11.0 起挂在缩略图上而
+ * 不是整格）：点它要么用系统默认看图程序打开这张图（「当前显示」），
+ * 要么立刻把这块屏切到这一张（「下一张」）。
+ *
+ * 视觉上必须让人看出它可点（否则又是一个"藏起来的功能"，见 §7.18 那一类约定）：
+ * 指针光标 + 悬停时预览框描边变强调色。**不改尺寸**——加边框会让两格错位，
+ * 因此用 box-shadow 画描边（与拖拽落点那条同一个理由，见 §10.33）。
+ *
+ * 挂在缩略图上而不是整格上，是因为同一格里下面那行路径是**另一个**点击目标
+ * （打开所在文件夹）：整格可点会让两件事叠在一起。 */
+.wwp-shot-openable {
+  cursor: pointer;
+}
+
+.wwp-shot-openable:hover {
+  box-shadow: inset 0 0 0 1px var(--wwp-accent);
+}
+
+.wwp-shot-openable:active {
+  box-shadow: inset 0 0 0 2px var(--wwp-accent);
+}
+
+/* ---------- 字段行：固定标签列，方框对齐 ----------
+ *
+ * 用 grid 而不是 flex：标签是**固定宽度的一列**，因此同一个卡片里所有输入框
+ * 的左边缘都在同一条竖线上（用户要求"使各个方框对齐"）。
+ *
+ * flex 那一版还有一个真实的 bug：`flex: 0 0 168px` 加在 `<label>` 上，
+ * 而带悬浮提示的标签外面还套了一层 Tooltip 的 inline-block 锚点——
+ * 于是那个锚点才是 flex 子项、固定宽度落空，标签被挤窄并折成两行
+ * （用户截图里的"长宽比区\n间"就是这么来的）。现在 Tooltip 套在 label 里面，
+ * 并由 grid 的列宽管住它。
+ */
+.wwp-field {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 4px;
+  padding: 4px 0;
+}
+
+/*
+ * 2026-10 撤掉的一条：`.wwp-field-end`（右对齐的字段行，原先只给「图像比例筛选」
+ * 那一行用）。用户后来要求把那一行与上面的数字行**并成一行**，字段行本身没了，
+ * 右对齐也就没有使用者了——连同 `Field` 组件的 `end` 开关一起删掉，
+ * 不留没人用的规则（现在的比例筛选输入框在 `.wwp-stats-fields` 那一行里，
+ * 与数字块一起左对齐）。
+ */
+
+.wwp-field-label {
+  font-size: 13px;
+  color: var(--wwp-dim);
+  /* 标签是固定的一列，永远不折行（用户要求"前面的文字不要折行"）。 */
+  white-space: nowrap;
+  /* 万一将来出现比这一列还长的标签：截断，而不是压到输入框上。 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wwp-field-body {
+  min-width: 0;
+}
+
+.wwp-input-sm {
+  max-width: 320px;
+}
+
+/* 播放列表那一行里的小格子（间隔秒数、填充方式）。 */
+.wwp-input-xs {
+  width: 76px;
+  max-width: 76px;
+  padding: 5px 8px;
+}
+
+select.wwp-input-xs {
+  width: 96px;
+  max-width: 96px;
+  padding-right: 26px;
+}
+
+/* 长宽比区间的两个输入框（下限 / 上限）挤在同一行：
+ * 它们是同一个区间 [下限, 上限) 的两端，分两行既占地方又让人以为是两个条件。
+ *
+ * 格子刻意做小：要填的是 1.3 这种两三个字符的比值。2026-10 这两格**并进了
+ * 数字行**（与「37 次 · 143 ms」「1284 张」同一行，用户要求"使两行的信息
+ * 能够集中到一行"），88px 的格子会把这一行挤到折行——"上限"那一格掉到第二行，
+ * 合并就白做了（判据 7 的 `MERGED_SAME_LINE` 从 6 掉到 4 就是这个）。
+ * 因此收到 64px；真机上"次数/张数"可能是五六位数字，宁可方框再窄一点
+ * （最小 44px，仍看得全"1234"），也不要让这一行折成两行。 */
+.wwp-aspect-range {
+  gap: 6px;
+}
+
+.wwp-aspect-range > .wwp-input {
+  flex: 0 1 64px;
+  width: 64px;
+  min-width: 44px;
+  max-width: 64px;
+}
+
+.wwp-aspect-range > .wwp-dim {
+  flex: 0 0 auto;
+}
+
+/* 一行里放多个控件（例如输入框 + 「选择图片…」按钮）。
+   用 flex 让输入框吃掉剩余宽度，按钮保持自己的宽度。 */
+.wwp-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wwp-inline > .wwp-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 但"同宽的那三个方框"不许跟着 flex 长：它们要的是自己那一列的宽度。
+ * （2026-10 起这三行改成了网格，这条规则只对别处的 `.wwp-inline` 生效；
+ *   保留它是为了"哪天又有人把方框放回 flex 行里"时行为仍然正确。） */
+.wwp-inline > .wwp-monitor-field {
+  flex: 0 0 auto;
+}
+
+.wwp-inline > .wwp-btn {
+  flex: 0 0 auto;
+}
+
+.wwp-screen-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  /* 窗口窄时让右边的按钮组整体换到下一行，而不是把左边的名字挤到溢出。
+   * 两块屏并排时每张卡片只有四百来像素，而右上角现在是**两个**按钮
+   * （删除当前壁纸 + 暂停）。 */
+  flex-wrap: wrap;
+  row-gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--wwp-border-soft);
+}
+
+/* 卡片右上角那组按钮（删除当前壁纸在左，暂停/继续在右）。
+ * 整体作为一个 flex 项，因此换行时它们一起走，不会被拆散。 */
+.wwp-screen-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.wwp-screen-name {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wwp-tag {
+  font-family: "Microsoft YaHei UI", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--wwp-surface-strong);
+  color: var(--wwp-dim);
+  border: 1px solid transparent;
+  /* 标签都是很短的词（主 / 竖屏 / 3 个图库），永远不折行：
+   * 被挤窄时折成"3 个 图 库"这种竖排比溢出更难看，也更难读。 */
+  white-space: nowrap;
+}
+
+.wwp-tag-warn {
+  background: var(--wwp-warn-soft);
+  color: var(--wwp-warn);
+}
+
+/* 显示器名可以**双击改名**。光标与悬停底色就是这个功能的提示——
+ * 没有它的话没人会想到那一行字能点（tooltip 里也写了，但要先悬停上去）。 */
+.wwp-screen-name-text {
+  cursor: text;
+  padding: 0 3px;
+  border-radius: 4px;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.wwp-screen-name-text:hover {
+  background: var(--wwp-surface-strong);
+  color: var(--wwp-accent);
+}
+
+/* 双击后出现的改名输入框：与标签同字体，宽度固定，
+ * 免得输入时整行标签（主/竖屏/左）跟着左右跳动。 */
+.wwp-input-name {
+  width: 150px;
+  max-width: 150px;
+  padding: 3px 8px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 13px;
+}
+
+/* NSFW 按钮：绿 = 未开启（按下去切到固定壁纸），红 = 已开启（NSFW 模式中）。
+ *
+ * 用底色表达状态而不是改文字："NSFW（切到固定壁纸）"与"退出 NSFW 模式"一长一短，
+ * 切换时会让整行按钮左右跳动；固定成一个短词之后这一行是稳定的。 */
+.wwp-btn-nsfw {
+  background: var(--wwp-nsfw);
+  border-color: transparent;
+  color: var(--wwp-on-nsfw);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  /* 宽度是普通按钮的**两倍**（用户要求）：NSFW 是这一行里唯一的"模式切换"，
+   * 做得醒目一点才不会与旁边的普通播放控制混在一起。
+   * 两个状态（绿/红）必须同宽，否则一切换状态整行就跟着跳。 */
+  min-width: 120px;
+  justify-content: center;
+}
+
+.wwp-btn-nsfw:hover:not(:disabled) {
+  background: var(--wwp-nsfw-strong);
+}
+
+.wwp-btn-nsfw-on {
+  background: var(--wwp-nsfw-on);
+  border-color: transparent;
+  color: var(--wwp-on-nsfw);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  /* 与 `.wwp-btn-nsfw` 同宽：绿↔红切换时整行不能动。 */
+  min-width: 120px;
+  justify-content: center;
+}
+
+.wwp-btn-nsfw-on:hover:not(:disabled) {
+  background: var(--wwp-nsfw-on-strong);
+}
+
+/* 卡片里"数字 + 比例筛选"那一行（用户 2026-10 要求两行并一行）。
+ *
+ * 这一行原来是两块：`.wwp-stats`（已切换 / 候选 / 最近错误）与
+ * `.wwp-screen-settings`（一个右对齐的「图像比例筛选」字段行，靠这条上边框
+ * 与上面的设置网格分开）。合并之后只剩一行，但那条分段的细线要留着——
+ * 它分开的是"这块屏的显示设置"与"现在跑得怎么样"，与内容分几行无关。
+ *
+ * 写在 `.wwp-stats` **之后**：两边的 `margin-top` 同权重，靠源码顺序让
+ * 12px 胜出（`.wwp-stats` 自己那份 10px 是给没有上边框的场合用的）。 */
+.wwp-stats-fields {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wwp-border-soft);
+}
+
+.wwp-page {
+  padding: 22px;
+  height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+/* ---------- 每屏设置的左右两列布局 ---------- */
+/*
+ * 两台显示器的设置并排显示，便于对比长宽比区间这类需要"放在一起看"的参数。
+ *
+ * `minmax(320px, 1fr)` + `auto-fit` 的效果：
+ *   - 宽窗口：两列并排（用户要的）；
+ *   - 窄窗口：自动退化成单列，不需要媒体查询。
+ *
+ * 用 grid 的 `align-items: start` 而不是默认的 `stretch`：
+ * 两块屏的内容高度不同（一块候选 0 张、另一块 2000 张）时，
+ * stretch 会把短的那块拉得和长的一样高，看起来像有空白没填。
+ */
+.wwp-screen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+/* 网格里的卡片不需要自己的下边距——间距由 gap 负责。 */
+.wwp-screen-grid > .wwp-card {
+  margin-bottom: 0;
+}
+
+/* ---------- 图库管理 ---------- */
+.wwp-lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 一个图库 = 它那一行 + （展开时的）它自己的目录树。
+ * 用 flex 列把两者绑在一起：目录树因此永远出现在**被点的那一行下方**，
+ * 而不是整个列表的末尾（用户要求：滚到页底看不到自己点的是哪个）。 */
+.wwp-lib-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 目录树 ---------- */
+/*
+ * 目录树是一行的**子面板**：左缩进 + 凹陷底色，视觉上挂在上面那一行下面。
+ * 之前它挂在整张卡片的最后、还带一条 `border-top` 分隔线，看起来像"另一个区块"，
+ * 与"我点的是这一行"对不上。
+ */
+.wwp-tree {
+  margin: 6px 0 2px 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--wwp-border-soft);
+  border-left: 2px solid var(--wwp-accent);
+  border-radius: var(--wwp-radius-sm);
+  background: var(--wwp-surface);
+}
+
+.wwp-tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.wwp-tree-body {
+  /* 目录多时自己滚动，避免把整页拉得很长。 */
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: var(--wwp-radius-sm);
+  padding: 4px;
+}
+
+.wwp-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wwp-tree-row:hover {
+  background: var(--wwp-surface);
+}
+
+/* 不参与轮播的目录淡一点：一眼能看出哪些被取消了。 */
+.wwp-tree-row-off .wwp-tree-name {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.wwp-tree-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wwp-tree-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.wwp-tree-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+/* ---------- 目录树的折叠箭头 ---------- */
+.wwp-tree-arrow {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--wwp-faint);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.wwp-tree-arrow:hover:not(:disabled) {
+  background: var(--wwp-surface);
+  color: var(--wwp-text);
+}
+
+/* 没有子目录时占位，保证同一层的复选框竖直对齐。
+   不占位的话"有子目录"与"没子目录"的行会错开一格，看起来像 bug。 */
+.wwp-tree-arrow-empty {
+  display: inline-block;
+  cursor: default;
+}
+
+/* ---------- 扫描进度条 ---------- */
+.wwp-progress {
+  height: 8px;
+  margin-top: 12px;
+  border-radius: 999px;
+  /* 底槽用比页面略深的颜色：进度条要靠"底色 + 填充色"的对比读出来，
+     只靠填充色在浅色背景下边界不清。 */
+  background: var(--wwp-surface-strong);
+  overflow: hidden;
+}
+
+.wwp-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--wwp-accent);
+  /* 宽度变化加过渡：进度是按批上报的（每批 4096 个文件），
+     不加过渡会一跳一跳。 */
+  transition: width 160ms ease-out;
+}
+
+/* 分母未知（还在遍历目录）时的"不确定进度"：
+   用流动条纹表示"在做事情，但还不知道还剩多少"。
+   这比停在 0% 诚实——0% 看起来像卡住了。 */
+.wwp-progress-unknown {
+  width: 40%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--wwp-accent) 0 12px,
+    var(--wwp-accent-soft) 12px 24px
+  );
+  animation: wwp-progress-slide 1.1s linear infinite;
+}
+
+@keyframes wwp-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.wwp-progress-caption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--wwp-dim);
+  /* 长路径会撑破卡片，因此允许在任意字符处换行。 */
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 右上角浮层：所有"右上角提示"共用的一层 ----------
+ *
+ * 用户 2026-10 的要求："检查所有右上角的悬浮提示，使其一定出现在程序 UI 界面的
+ * 最右上角，不要覆盖掉重新加载几个字。"
+ *
+ * 因此这一层是**唯一**决定"右上角提示在哪"的地方，三条都是硬性约束：
+ *
+ *   1. **一定在最右上角**：整层 `position: fixed; top: 8px; right: 8px`。
+ *      卡片自己再也不许写 `top`/`right`——以前扫描卡写的是 `top: 84px`，
+ *      那是"往下挪了 84 px"，不是最右上角。
+ *
+ *   2. **不许盖住「重新加载」**：播放页最上面一行就是控制条，它右端是
+ *      「重新加载」按钮（窗口 1120 CSS px 时按钮上边缘在 y≈120，见
+ *      `check-layout.ps1` 判据 8 里量出来的 `POP_RELOAD=[…]`）。
+ *      因此两个卡片是**横向并排**（`row-reverse`）而不是纵向堆叠：
+ *      同时出现时这一层的高度取两者的**最大值**，而不是相加——相加必然
+ *      盖住按钮。判据 8 直接量"卡片矩形 ∩ 按钮矩形 = 空"。
+ *
+ *   3. **不挡住别的东西**：整层 `pointer-events: none`、卡片自己恢复
+ *      `auto`，否则这一层会拦住右上角的鼠标事件。
+ *
+ * 入场动画统一用 `wwp-toast-in`：两个卡片从上方稍微移入，看起来是同一处
+ * 冒出来的东西。
+ */
+.wwp-pop-layer {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  display: flex;
+  /* row-reverse：第一个子元素贴最右边（DOM 顺序 = 视觉顺序的镜像）。 */
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.wwp-pop-layer > * {
+  pointer-events: auto;
+}
+
+/* ---------- 右上角浮动提示 ---------- */
+/* 关键点是 `position: fixed`（在 `.wwp-pop-layer` 上）：它让提示完全脱离文档流，
+   因此出现与消失都**不会把页面内容顶下去**。
+   之前用的是文档流里的盒子，保存一次界面就抖一下。 */
+.wwp-toast {
+  /* 位置由 `.wwp-pop-layer` 给（最右上角），这里只管自己多大、长什么样。 */
+  max-width: min(430px, calc(100vw - 16px));
+  padding: 10px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  /* 浮层要有明确的边界与阴影，否则在复杂背景上看不出它是一层浮起来的东西。 */
+  box-shadow: var(--wwp-shadow-pop);
+  /* 入场动画：从右上方稍微移入。短（140ms）到不干扰阅读，
+     但有它用户才会注意到"这里出现了新东西"。 */
+  animation: wwp-toast-in 140ms ease-out;
+}
+
+@keyframes wwp-toast-in {
+  /* 只有透明度，**不动位置**。
+   *
+   * 这一层（`.wwp-pop-layer`）钉在窗口最右上角，用户的要求是"一定出现在最右上角"
+   * ——那就不能在入场动画里先偏出去 6px（原来的 `translateY(-6px)` 就是偏的，
+   * 判据 8 量 `POP_CORNER_OK` 时正好抓到了这个"偏"）。淡入一样有"这里出现了
+   * 新东西"的提示作用，而矩形从第一帧起就在正确的位置上。 */
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.wwp-toast-ok {
+  border: 1px solid rgb(26 143 74 / 0.4);
+  background: var(--wwp-card);
+  color: var(--wwp-text);
+  /* 左侧一道状态色：比整块变色含蓄，但仍然一眼能分辨成功/失败。 */
+  border-left: 4px solid var(--wwp-ok);
+}
+
+.wwp-toast-error {
+  border: 1px solid rgb(207 59 47 / 0.4);
+  background: var(--wwp-card);
+  color: var(--wwp-text);
+  border-left: 4px solid var(--wwp-bad);
+}
+
+/* ---------- 右上角常驻的扫描状态 ---------- */
+/* 位置同样由 `.wwp-pop-layer` 给：它只排在这两格并排的第一格（贴最右边）。 */
+.wwp-scan-toast {
+  width: 330px;
+  max-width: min(330px, calc(100vw - 16px));
+  /* 比提示卡再紧一点：这一格内容多（标题、进度、计数、按钮），
+     而整层的高度必须压在「重新加载」之上（见 `.wwp-pop-layer` 的说明）。 */
+  padding: 9px 12px;
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: var(--wwp-radius);
+  background: var(--wwp-card);
+  /* 阴影让它从页面内容里浮出来。不加的话它看起来像页面的一部分，
+     用户会以为它随页面滚动。 */
+  box-shadow: var(--wwp-shadow-pop);
+  font-size: 12px;
+  animation: wwp-toast-in 180ms ease-out;
+}
+
+.wwp-scan-toast-head {
+  display: flex;
+  /* `flex-start` 而不是 `space-between`：靠「已用时」的 `margin-left: auto`
+     把右侧那两件（已用时、取消按钮）一起推过去，间距才是可控的。 */
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  /* 压到 4 px：整层的高度是硬约束（见 `.wwp-pop-layer` 的说明）。 */
+  margin-bottom: 4px;
+}
+
+.wwp-scan-toast-title {
+  font-weight: 650;
+  font-size: 13px;
+  flex: 0 0 auto;
+}
+
+/* 库名（只取路径最后一段）。
+ *
+ * 它是标题行里**唯一可以牺牲**的东西：库名可能是很长的目录名，而这一行还有
+ * 「已用时」与「取消扫描」必须留下。`min-width: 0` 让 flex 允许它被压缩
+ * （否则 flex 子项的 `min-width: auto` 会顶出去），再加省略号。
+ *
+ * 顺带保证这一行永远是**一行**：整格高度受"不能盖住重新加载"的约束，
+ * 库名长短不能改变高度。 */
+.wwp-scan-toast-library {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+}
+
+/* 「已用时 1 分 32 秒」。
+ *
+ * 2026-10 起它排在**标题这一行**，不再自己占一行：用户 2026-10 的要求是
+ * "右上角的浮层不许盖住重新加载"，而这一格的高度必须留在按钮之上，
+ * 省下的每一行都算数。它仍然一直可见——"进度数字不动、秒数还在走"是判断
+ * 扫描是卡住还是活着的唯一依据（见 `ScanToast`）。 */
+.wwp-scan-toast-elapsed {
+  margin-left: auto;
+  color: var(--wwp-dim);
+  font-size: 11px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* 「取消扫描」。
+ *
+ * 2026-10 起它排在标题这一行，不再自己占一整行：那是这一格高度里最值得省的
+ * 32px（见 `.wwp-pop-layer`）。因此它做得紧凑——小字号、小内边距。 */
+.wwp-scan-toast-cancel {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 3px 9px;
+  font-size: 12px;
+}
+
+/* 进度条在这一格里比在页面里紧一些（同样是高度约束）。 */
+.wwp-scan-toast .wwp-progress {
+  margin-top: 8px;
+}
+
+.wwp-scan-toast-line {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 播放列表 ---------- */
+.wwp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wwp-playlist {
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: var(--wwp-radius);
+  padding: 10px 12px;
+  background: var(--wwp-card);
+  transition: border-color 120ms ease;
+}
+
+.wwp-playlist:hover {
+  border-color: var(--wwp-border);
+}
+
+/*
+ * 一个播放列表的**全部信息在同一行**（用户要求"只占一行，不要折行"）：
+ * 名字 | 间隔 | 填充 | 图库数 | 关联图库 | 删除。
+ *
+ * 窗口正常大小（1400 逻辑 px → 界面视口 1120 CSS px）时这一行需要约 760 px，
+ * 而卡片里可用 876 px，因此**稳定地排在一行**。
+ *
+ * `flex-wrap: wrap` 是给"窗口被拉到最小宽度"留的退路：那时宁可让最后两个按钮
+ * 换到第二行，也不能让中间那个「N 个图库」标签被压成竖排——
+ * 那个样子真的出现过（`nowrap` + 标签没有 flex:0 0 auto 的后果）。
+ *
+ * 名字输入框为什么写 `flex: 1 1 140px` 而不是让它按 `width: 100%` 算：
+ * `.wwp-input` 的 `width: 100%` 一旦成为 flex 基准，这一项的基准宽度就等于
+ * **整行宽度**，于是它独占一行、把其它控件全挤扁。给一个明确的基准宽度即可。
+ */
+.wwp-playlist-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* 名字输入框吃掉剩余宽度，让后面的标签与按钮始终贴着右边。 */
+.wwp-playlist-name {
+  flex: 1 1 140px;
+  width: auto;
+  min-width: 90px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 行内的小字段（「间隔 100 秒」这种）：标签 + 输入框 + 单位。 */
+.wwp-playlist-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+/* 这一行里的标签与按钮都不允许被压缩：它们的内容都很短，
+ * 被压缩只会让文字溢出小胶囊（而不是像名字那样"变窄"）。 */
+.wwp-playlist-head > .wwp-tag,
+.wwp-playlist-head > .wwp-btn {
+  flex: 0 0 auto;
+}
+
+.wwp-playlist-libs {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wwp-border-soft);
+  /* 图库多时自己滚动，避免把整页拉长。 */
+  max-height: 240px;
+  overflow: auto;
+}
+
+/* ---------- 列表的拖拽排序（用户 2026-10 的要求） ----------
+ *
+ * 手柄放在行的**最左边**（用户说"通过拖拽左侧的某个位置"）。只有它挂
+ * `draggable`：整行可拖的话，名字输入框里的文字就没法用鼠标选中了。
+ *
+ * `⋮⋮` 用负的字间距把两个竖排省略号挤成一个"抓手"的形状——不引入图标字体，
+ * 也不需要额外的 DOM（这个项目的约定是不为了好看加依赖）。
+ */
+.wwp-drag-handle {
+  flex: 0 0 auto;
+  padding: 2px 3px;
+  border-radius: 4px;
+  color: var(--wwp-faint);
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: -2px;
+  cursor: grab;
+  user-select: none;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.wwp-drag-handle:hover {
+  color: var(--wwp-text);
+  background: var(--wwp-surface);
+}
+
+.wwp-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 少于两个列表时不能排序：手柄留着（位置不跳），但明显是灰的。 */
+.wwp-drag-handle-off {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 正在被拖的那一行淡一点，让"我手上拿着哪一行"一眼可见。 */
+.wwp-playlist-dragging {
+  opacity: 0.45;
+}
+
+/* 落点提示：在行的上边/下边画一道强调色线。
+ * 用 `box-shadow` 而不是 `border`：加边框会让行高变 2px，被拖动的行
+ * 会因此上下跳一下（拖动过程中最忌讳布局变化）。 */
+.wwp-playlist-drop-before {
+  box-shadow: 0 -3px 0 -1px var(--wwp-accent);
+}
+
+.wwp-playlist-drop-after {
+  box-shadow: 0 3px 0 -1px var(--wwp-accent);
+}
+
+/* ---------- 回收站：相册 ---------- */
+/*
+ * 用户 2026-10 的要求：「可以把回收站单独列一个子页，该页面以相册形式展示
+ * 被程序删除的图片，在图片下面有两个按钮，一个是恢复，一个是删除。
+ * 恢复加绿色底色，删除加红色底色。同时在该页顶部也保留一个全部删除的按钮。」
+ *
+ * `auto-fill + minmax(190px, 1fr)`：窗口宽就多排几列、窄就少排几列，
+ * 不需要媒体查询；卡片宽度有下限，缩略图不会小到看不出是什么。
+ */
+.wwp-trash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.wwp-trash-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: var(--wwp-radius-sm);
+  background: var(--wwp-card);
+  overflow: hidden;
+}
+
+/* 缩略图区：一块**固定大小的格子**，图片整张缩进来看。
+ *
+ * ## 为什么不再是 cover 裁切（用户 2026-10 的要求）
+ *
+ * 这一页要回答的是"这张图要不要留"——因此必须能看见**全貌**。
+ * 原来 `width/height: 100%` + `object-fit: cover` 会把竖图裁掉上下、横图裁掉左右，
+ * 恰恰看不到全貌。现在：格子本身的大小不变（卡片照样排得整齐），
+ * 图片按比例缩到放得下为止，**占多大就占多大**（`max-width/max-height` +
+ * `width/height: auto`，于是图像元素本身也不会被撑成格子那么大）。
+ * 与播放页那两个预览格（`.wwp-shot-frame`）是同一个做法。 */
+.wwp-trash-thumb {
+  height: 132px;
+  display: grid;
+  /* 一行一列都**占满格子**（100%）而不是按图片内容撑开。
+   *
+   * 这一条是判据 4 量出来的：`display: grid` 默认让轨道按图片的 max-content
+   * 撑成 360px，于是 `max-width: 100%` 参照的不是 190px 的格子而是那条 360px 的
+   * 轨道——图片"完整"地溢出格子，再被 `overflow: hidden` 裁掉，看起来与 cover 一样。
+   * 明确写成 100% 之后，图片才真的被格子约束住。 */
+  grid-template: 100% / 100%;
+  place-items: center;
+  background: var(--wwp-surface);
+  overflow: hidden;
+}
+
+.wwp-trash-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* 缩略图还没生成好 / 这张图解不出来时占位。要能换行：文件名可能很长。 */
+.wwp-trash-thumb-note {
+  padding: 0 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wwp-faint);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.wwp-trash-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px 6px;
+  min-width: 0;
+}
+
+.wwp-trash-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 卡片里的第二行（删除时间 · 大小）。
+ * 卡片只有 190px 宽，这一行必须 nowrap：折成两行会让卡片高矮不一，
+ * 而"8.0 MB"被拆成"8.0"和"MB"尤其难看（实测过）。 */
+.wwp-trash-sub {
+  font-size: 11px;
+  color: var(--wwp-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 卡片上的两个点击目标（用户 2026-10 的要求，1.11.0 改了后者）：缩略图＝用
+ * 系统默认程序打开原图，文件名＝打开它原来所在的文件夹并选中它。
+ *
+ * 「可点」的视觉语言沿用 `.wwp-stat-copy` / `.wwp-shot-copy` 那一套
+ * （虚下划线 + 悬停变强调色）——用户在本程序里已经见过它几次，不必重新学。
+ * 缩略图那一格有 132px 高，虚下划线在那里没有意义，因此只留指针与整格反馈。
+ *
+ * 注意：卡片上原来还有一行"原位置"，那一行已经撤掉（同一轮的要求），
+ * 因此 `.wwp-trash-origin` 也一并删掉了。 */
+.wwp-trash-openable {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.wwp-trash-openable:hover {
+  background: var(--wwp-accent-soft);
+}
+
+.wwp-trash-openable:active {
+  transform: translateY(1px);
+}
+
+.wwp-trash-reveal {
+  cursor: pointer;
+  text-decoration: underline dotted var(--wwp-faint);
+  text-underline-offset: 3px;
+  border-radius: 4px;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.wwp-trash-reveal:hover {
+  color: var(--wwp-accent);
+  background: var(--wwp-accent-soft);
+}
+
+.wwp-trash-reveal:active {
+  transform: translateY(1px);
+}
+
+.wwp-trash-actions {
+  display: flex;
+  gap: 6px;
+  padding: 4px 10px 10px;
+}
+
+.wwp-trash-actions > .wwp-btn {
+  flex: 1 1 0;
+  justify-content: center;
+  padding: 5px 8px;
+}
+
+/* 恢复＝绿底、删除＝红底（用户明确要求）。
+ * 实心而不是描边：这里是"二选一"的动作，两个都要一眼看清。 */
+.wwp-btn-restore {
+  background: var(--wwp-ok-solid);
+  border-color: transparent;
+  color: var(--wwp-on-solid);
+  font-weight: 600;
+}
+
+.wwp-btn-restore:hover:not(:disabled) {
+  background: var(--wwp-ok-solid-strong);
+}
+
+.wwp-btn-discard {
+  background: var(--wwp-bad-solid);
+  border-color: transparent;
+  color: var(--wwp-on-solid);
+  font-weight: 600;
+}
+
+.wwp-btn-discard:hover:not(:disabled) {
+  background: var(--wwp-bad-solid-strong);
+}
+
+/* ---------- 跟随鼠标的悬浮提示 ---------- */
+.wwp-tip-anchor {
+  /* 只作为鼠标事件的载体，不改变布局。 */
+  display: inline-block;
+}
+
+.wwp-tip {
+  position: fixed;
+  z-index: 200;
+  max-width: 340px;
+  padding: 9px 11px;
+  border: 1px solid var(--wwp-border-soft);
+  border-radius: 10px;
+  background: var(--wwp-card);
+  color: var(--wwp-text);
+  font-size: 12px;
+  line-height: 1.55;
+  /* 提示正文里有换行（\n），因此必须保留。 */
+  white-space: pre-line;
+  box-shadow: var(--wwp-shadow-pop);
+  /* 只用来阅读，不该拦住鼠标事件（否则会打断 onMouseLeave）。 */
+  pointer-events: none;
+}

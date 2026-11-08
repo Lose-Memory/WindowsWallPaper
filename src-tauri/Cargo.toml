@@ -1,0 +1,48 @@
+[package]
+name = "windows-wallpaper"
+version = "1.14.0"
+edition = "2021"
+description = "WindowsWallPaper：Windows 11 桌面壁纸播放器"
+authors = ["WindowsWallPaper"]
+default-run = "windows-wallpaper"
+
+# 工作区根。target 目录因此在 src-tauri/target，
+# 与工程同盘、可随时删除，不依赖任何全局配置。
+[workspace]
+members = [".", "crates/wwp-core"]
+
+[workspace.package]
+version = "1.14.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# tray-icon 特性提供系统托盘；image-png 用于把图标 PNG 解码成托盘图标。
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+wwp-core = { path = "crates/wwp-core" }
+# 只被 --spike-wallpaper 用来在图库里挑两张测试图（一张横、一张竖）。
+walkdir = "2"
+# 只被 --dump-frame 用来把解码出的一帧写成 PNG，便于人眼核对
+# "解出来的画面到底对不对"（通道顺序、内容）。**不参与壁纸显示路径。**
+png = "0.18"
+# 只被 --test-wallpaper-latency 用来采样屏幕像素（判断画面是否真的变了）。
+# 注意：GDI 看不到 DirectComposition 的内容，因此它只用于静态壁纸的验证。
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_HiDpi",
+] }
+
+[profile.release]
+# 交付文件夹要尽量小：strip 掉符号，按体积优化。
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WindowsWallPaper</title>
+    <!--
+      显式声明图标，避免 WebView2 自动去请求 /favicon.ico。
+
+      不声明的话，WebView2 会自己发起那个请求，而 Tauri 的资产协议里
+      没有 favicon.ico，于是日志里出现两条
+      "Asset `favicon.ico` not found; fallback to ..." 的警告。
+      那两条警告本身无害，但它们会淹没日志里真正重要的警告——
+      而这个项目的日志是事后排查的主要依据。
+
+      用内联的 SVG（data URI）而不是图片文件：不产生额外资源请求，
+      也就不会有"部署时忘了带上图标文件"这种问题。
+      窗口图标由 tauri.conf.json 的 icons 指定，与这里无关。
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%232f6f4f'/%3E%3Cpath d='M3 9l2.5-3 2 2.4L10 5.5 13 9.5z' fill='%23dff3e6'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/frontend/main.tsx"></script>
+  </body>
+</html>
