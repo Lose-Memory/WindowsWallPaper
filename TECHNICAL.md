@@ -174,6 +174,7 @@ dirs = []
 | `next_hotkey` | 字符串 | `Ctrl+Alt+Right` | 全局“下一张”（所有屏各换一张） |
 | `previous_hotkey` | 字符串 | `Ctrl+Alt+Left` | 全局“上一张”（所有屏各退回一张） |
 | `show_window_hotkey` | 字符串 | `Ctrl+Alt+W` | 全局“显示主界面”：把设置窗口显示出来（取消最小化并拿到焦点）。不改壁纸、不改播放状态 |
+| `switch_playlists_hotkey` | 字符串 | `Ctrl+Alt+Shift+L` | 全局“切换播放列表”：每块屏在自己配的两个列表之间往返（见每屏的 `switch_playlist_a` / `switch_playlist_b`）。留空 = 不注册。写错只记日志、不阻止保存 |
 | `cleanup_expanded` | 布尔 | `true` | 设置页「清理程序目录」那张卡片是否展开。用户在界面上折叠一次就记下来，下次进设置页照旧收着 |
 | `tray_click_action` | 字符串 | `'open-window'` | 单击托盘图标做什么：`'open-window'`（打开主界面）或 `'next-wallpaper'`（换一张壁纸；此时**双击**托盘图标打开主界面）。右键始终是菜单 |
 | `minimize_to_tray` | 布尔 | `true` | 关窗口时隐藏到托盘（而不是退出）。关掉它则关闭窗口就等于退出（退出不还原壁纸） |
@@ -216,6 +217,8 @@ dirs = []
 | 字段 | 类型 | 默认 | 说明 |
 | --- | --- | --- | --- |
 | `current_playlist` | 字符串 | `''` | 这块屏当前用哪个播放列表（填 `Playlist::id`）。**空串 = 这块屏不换纸** |
+| `switch_playlist_a` | 字符串 | `''` | 参与往返切换的第一个播放列表。与 `switch_playlist_b` **都非空、互不相同、且都还能在 `[[playlists]]` 里找到**时才参与；当前列表是 A 就切到 B，否则切到 A。空串 = 这块屏不切换 |
+| `switch_playlist_b` | 字符串 | `''` | 参与往返切换的第二个播放列表。规则同上 |
 | `nsfw_wallpaper` | 字符串 | `''` | NSFW 模式时这块屏显示哪张图（完整文件路径）。空串 = 没设置。旧配置里这个字段叫 `safe_wallpaper`，照样读得进来 |
 | `single_image` | 字符串 | `''` | 这块屏的**固定单图**。非空时它优先于 `current_playlist`：只显示这一张、不轮播。空串 = 按播放列表轮播 |
 | `label` | 字符串 | `''` | 界面上的显示名（双击显示器名改的那个）。只保留英文/数字/空格/`-`/`_`；空串 = 显示真实显示器名 |

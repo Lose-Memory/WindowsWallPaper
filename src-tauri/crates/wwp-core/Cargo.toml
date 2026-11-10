@@ -1,6 +1,6 @@
 [package]
 name = "wwp-core"
-version = "1.14.0"
+version = "1.15.0"
 edition = "2021"
 description = "WindowsWallPaper 引擎：路径、配置、索引、壁纸呈现。不依赖 tauri，可无窗口测试。"
 

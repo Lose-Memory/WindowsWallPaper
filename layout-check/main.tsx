@@ -98,6 +98,7 @@ const settingsInfo = {
     nextHotkey: "Ctrl+Alt+Right",
     previousHotkey: "Ctrl+Alt+Left",
     showWindowHotkey: "Ctrl+Alt+W",
+    switchPlaylistsHotkey: "Ctrl+Alt+Shift+L",
     trayClickAction: "open-window",
     // 「清理程序目录」那张卡片展开着（用户要求默认展开，见 `CleanupCard`）。
     cleanupExpanded: true,
@@ -105,6 +106,8 @@ const settingsInfo = {
   monitors: {
     "\\\\.\\DISPLAY1": {
       currentPlaylist: "list1",
+      switchPlaylistA: "list1",
+      switchPlaylistB: "list2",
       nsfwWallpaper: "F:\\BT\\Private\\精选横屏素材\\nsfw.jpg",
       singleImage: "",
       label: "Main",
@@ -116,6 +119,8 @@ const settingsInfo = {
     },
     "\\\\.\\DISPLAY2": {
       currentPlaylist: "list3",
+      switchPlaylistA: "list3",
+      switchPlaylistB: "list2",
       nsfwWallpaper: "",
       singleImage: "",
       label: "Left",
@@ -376,7 +381,7 @@ const fake: Record<string, unknown> = {
   startup_info: {
     // 假后端里唯一一处版本号：跟着 package.json 走，否则截图左下角
     // 会写着一个早就过去的版本，看图的人会以为自检跑的是旧构建。
-    version: "1.14.0",
+    version: "1.15.0",
     build: "2026-10-16",
     root: settingsInfo.dataRoot,
     rootSource: "program-dir",
@@ -455,10 +460,25 @@ window.__TAURI_INTERNALS__ = {
         "nextHotkey",
         "previousHotkey",
         "showWindowHotkey",
+        "switchPlaylistsHotkey",
         "trayClickAction",
       ] as const) {
         if (typeof patch[key] === "string") {
           (settingsInfo.general as unknown as Record<string, unknown>)[key] = patch[key];
+        }
+      }
+      // 每屏的两个切换槽位也做一次真的合并：设置页那两条下拉框改完必须能读回来。
+      const monitorPatches = patch.monitors as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      if (monitorPatches) {
+        for (const [name, values] of Object.entries(monitorPatches)) {
+          const target = settingsInfo.monitors[name];
+          if (!target) continue;
+          for (const field of ["switchPlaylistA", "switchPlaylistB"] as const) {
+            const value = values[field];
+            if (typeof value === "string") target[field] = value;
+          }
         }
       }
       // 「清理程序目录」展开/折叠也是"存在设置里"的（用户要求记忆这个选项）：

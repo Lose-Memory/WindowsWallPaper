@@ -4345,7 +4345,7 @@ dependencies = [
 
 [[package]]
 name = "windows-wallpaper"
-version = "1.14.0"
+version = "1.15.0"
 dependencies = [
  "log",
  "png 0.18.1",
@@ -4543,7 +4543,7 @@ dependencies = [
 
 [[package]]
 name = "wwp-core"
-version = "1.14.0"
+version = "1.15.0"
 dependencies = [
  "fast_image_resize",
  "image",

@@ -66,8 +66,10 @@ pub const PREVIOUS_HOTKEY_ID: i32 = 4;
 /// 「显示主界面」。不改变壁纸，只把设置窗口翻出来（与托盘「打开主界面」、
 /// 第二次启动程序走的是同一段逻辑）。
 pub const SHOW_WINDOW_HOTKEY_ID: i32 = 5;
+/// 「切换播放列表」：每块配好两个列表的屏在两者之间往返一次。
+pub const SWITCH_PLAYLISTS_HOTKEY_ID: i32 = 6;
 
-/// 五个全局快捷键的写法（字符串形式，未解析）。空串 = 不注册。
+/// 六个全局快捷键的写法（字符串形式，未解析）。空串 = 不注册。
 ///
 /// 打包成一个结构而不是五个参数：注册、重新注册、日志三处都要用到它们，
 /// 逐个传参会很容易漏掉一个，而漏掉的表现是"那个快捷键没生效"——
@@ -80,30 +82,38 @@ pub struct HotkeySpecs {
     pub previous: String,
     /// 显示主界面。见 [`SHOW_WINDOW_HOTKEY_ID`]。
     pub show_window: String,
+    /// 切换播放列表。见 [`SWITCH_PLAYLISTS_HOTKEY_ID`]。
+    pub switch_playlists: String,
 }
 
 impl HotkeySpecs {
     /// 逐个快捷键：(id, 界面上叫什么, 写法)。
     ///
     /// 注册与日志共用这一份，避免"注册了但日志写的是另一个键"。
-    pub fn entries(&self) -> [(i32, &'static str, &str); 5] {
+    pub fn entries(&self) -> [(i32, &'static str, &str); 6] {
         [
             (NSFW_HOTKEY_ID, "NSFW 模式", self.nsfw.as_str()),
             (PAUSE_HOTKEY_ID, "暂停/继续", self.pause.as_str()),
             (NEXT_HOTKEY_ID, "下一张", self.next.as_str()),
             (PREVIOUS_HOTKEY_ID, "上一张", self.previous.as_str()),
             (SHOW_WINDOW_HOTKEY_ID, "显示主界面", self.show_window.as_str()),
+            (
+                SWITCH_PLAYLISTS_HOTKEY_ID,
+                "切换播放列表",
+                self.switch_playlists.as_str(),
+            ),
         ]
     }
 
     /// 全部 id，注销时用。
-    pub fn ids() -> [i32; 5] {
+    pub fn ids() -> [i32; 6] {
         [
             NSFW_HOTKEY_ID,
             PAUSE_HOTKEY_ID,
             NEXT_HOTKEY_ID,
             PREVIOUS_HOTKEY_ID,
             SHOW_WINDOW_HOTKEY_ID,
+            SWITCH_PLAYLISTS_HOTKEY_ID,
         ]
     }
 }
@@ -116,6 +126,7 @@ impl From<&crate::config::General> for HotkeySpecs {
             next: general.next_hotkey.clone(),
             previous: general.previous_hotkey.clone(),
             show_window: general.show_window_hotkey.clone(),
+            switch_playlists: general.switch_playlists_hotkey.clone(),
         }
     }
 }
@@ -335,7 +346,7 @@ mod tests {
     }
 
     #[test]
-    fn specs_bundle_covers_exactly_the_five_ids() {
+    fn specs_bundle_covers_exactly_the_six_ids() {
         // 注册与分发靠 id 对上号；两边不一致的表现是"某个快捷键按了没反应"，
         // 而那种问题从代码上很难看出来，因此用这条测试钉住这份对应关系。
         let specs = HotkeySpecs {
@@ -344,21 +355,24 @@ mod tests {
             next: "Ctrl+Alt+Right".to_string(),
             previous: "Ctrl+Alt+Left".to_string(),
             show_window: "Ctrl+Alt+W".to_string(),
+            switch_playlists: "Ctrl+Alt+Shift+L".to_string(),
         };
         let entries = specs.entries();
-        assert_eq!(entries.len(), 5);
+        assert_eq!(entries.len(), 6);
         assert_eq!(entries[0].0, NSFW_HOTKEY_ID);
         assert_eq!(entries[1].0, PAUSE_HOTKEY_ID);
         assert_eq!(entries[2].0, NEXT_HOTKEY_ID);
         assert_eq!(entries[3].0, PREVIOUS_HOTKEY_ID);
         assert_eq!(entries[4].0, SHOW_WINDOW_HOTKEY_ID);
+        assert_eq!(entries[5].0, SWITCH_PLAYLISTS_HOTKEY_ID);
         assert_eq!(entries[3].2, "Ctrl+Alt+Left");
         assert_eq!(entries[4].2, "Ctrl+Alt+W");
+        assert_eq!(entries[5].2, "Ctrl+Alt+Shift+L");
 
         let mut ids: Vec<i32> = HotkeySpecs::ids().to_vec();
         ids.sort();
         ids.dedup();
-        assert_eq!(ids.len(), 5, "五个 id 不能重复");
+        assert_eq!(ids.len(), 6, "六个 id 不能重复");
         // 每个写法都必须能解析，否则默认配置本身就是坏的。
         for (_, label, spec) in entries {
             assert!(parse(spec).is_ok(), "{label} 的默认写法应当能解析：{spec}");
@@ -366,13 +380,13 @@ mod tests {
     }
 
     #[test]
-    fn default_general_gives_five_parsable_hotkeys() {
+    fn default_general_gives_six_parsable_hotkeys() {
         // 升级路径：旧设置文件里没有这几个新字段，会取默认值。
         // 默认值必须是能注册的写法——否则用户一升级就有一条 warn 日志，
         // 而"下一张/上一张"看起来像没做。
         let general = crate::config::General::default();
         let specs = HotkeySpecs::from(&general);
-        assert_eq!(specs.entries().len(), 5);
+        assert_eq!(specs.entries().len(), 6);
         for (_, label, spec) in specs.entries() {
             let parsed = parse(spec).unwrap_or_else(|e| panic!("{label} 默认值无法解析：{e}"));
             assert_eq!(parsed.to_string(), spec, "{label} 的默认写法应当已是规范写法");

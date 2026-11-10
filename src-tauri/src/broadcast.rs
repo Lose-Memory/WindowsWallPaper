@@ -19,7 +19,7 @@
 
 use std::sync::OnceLock;
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use wwp_core::hidden_window;
 use wwp_core::hotkey::{self, HotkeySpecs};
 
@@ -62,6 +62,7 @@ pub fn start(app: &AppHandle<tauri::Wry>) {
 ///
 /// 前四个动作复用界面按钮走的同一段逻辑（`nsfw::toggle` / `PlaybackCommand`），
 /// 第五个（显示主界面）复用托盘的 `tray::show_main_window`，
+/// 第六个（切换播放列表）复用"手动改播放列表"那条保存 + 重建轮播的路，
 /// 因此快捷键与界面/托盘的行为不可能不一致。
 fn on_hotkey(id: i32) {
     let Some(app) = APP.get() else {
@@ -99,6 +100,19 @@ fn on_hotkey(id: i32) {
             crate::tray::show_main_window(app);
             log::info!("快捷键：已显示主界面");
         }
+        // 「切换播放列表」：与在播放页手动改列表走同一条路（保存 + 热重建）。
+        // 改完必须通知界面：快捷键改的是设置里的 `current_playlist`，
+        // 而界面手上的那份 `SettingsInfo` 不会自己更新。
+        hotkey::SWITCH_PLAYLISTS_HOTKEY_ID => match crate::commands::switch_playlists(&state) {
+            Ok(message) => {
+                log::info!("快捷键：{message}");
+                app.emit(crate::commands::EVENT_PLAYLISTS_SWITCHED, ())
+                    .unwrap_or_else(|error| {
+                        log::warn!("通知界面刷新播放列表失败：{error}");
+                    });
+            }
+            Err(error) => log::error!("快捷键：切换播放列表失败：{error}"),
+        },
         other => log::warn!("收到未知的快捷键 id={other}"),
     }
 }

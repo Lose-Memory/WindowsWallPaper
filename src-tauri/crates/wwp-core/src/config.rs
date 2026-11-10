@@ -241,6 +241,13 @@ pub struct General {
     /// （外壳的 `tray::show_main_window`）：显示、取消最小化、拿焦点。
     #[serde(default = "default_show_window_hotkey")]
     pub show_window_hotkey: String,
+    /// 在每块屏的两个播放列表之间往返切换的全局快捷键。
+    ///
+    /// 与其它快捷键一样：空串 = 不注册，写错只记一条 warn、不影响保存。
+    /// 每块屏要切哪两个列表配在 [`MonitorSettings::switch_playlist_a`] /
+    /// [`MonitorSettings::switch_playlist_b`] 里；没配好的屏不参与切换。
+    #[serde(default = "default_switch_playlists_hotkey")]
+    pub switch_playlists_hotkey: String,
     /// 设置页「清理程序目录」那张卡片是否展开。
     ///
     /// ## 为什么它是一个设置（而不是界面自己记在别处）
@@ -319,6 +326,14 @@ fn default_show_window_hotkey() -> String {
     "Ctrl+Alt+W".to_string()
 }
 
+/// 默认的"切换播放列表"快捷键。
+///
+/// 选 `Ctrl+Alt+Shift+L` 是用户明确指定的。三个修饰键 + `L`（List）
+/// 与上面五个键都不会撞车。
+fn default_switch_playlists_hotkey() -> String {
+    "Ctrl+Alt+Shift+L".to_string()
+}
+
 /// 首版默认**不启用**视频壁纸。理由见 [`General::video_enabled`]。
 fn default_video_enabled() -> bool {
     false
@@ -350,6 +365,7 @@ impl Default for General {
             next_hotkey: default_next_hotkey(),
             previous_hotkey: default_previous_hotkey(),
             show_window_hotkey: default_show_window_hotkey(),
+            switch_playlists_hotkey: default_switch_playlists_hotkey(),
             cleanup_expanded: default_cleanup_expanded(),
             tray_click_action: TrayClickAction::default(),
         }
@@ -435,6 +451,17 @@ pub struct MonitorSettings {
     /// 空字符串表示"还没选"。那种状态下该屏没有内容可播——这是刻意的：
     /// 与其猜一个默认列表，不如让界面明确提示"这块屏还没选播放列表"。
     pub current_playlist: String,
+    /// 「切换播放列表」快捷键在这块屏上使用的**两个**列表之一（存 `Playlist::id`）。
+    ///
+    /// 与 [`MonitorSettings::switch_playlist_b`] 一起构成一个"往返开关"：
+    /// 当前是 A 就切到 B，否则切到 A。两个都非空、互不相同、且都还存在，
+    /// 这块屏才参与切换——用户要求"没配两个播放列表的屏就不需要切换"。
+    ///
+    /// 它**不改变** `current_playlist` 的含义：那块字段仍然是"现在在放哪个列表"，
+    /// 界面上的播放列表下拉框照旧读写它。
+    pub switch_playlist_a: String,
+    /// 见 [`MonitorSettings::switch_playlist_a`]。
+    pub switch_playlist_b: String,
     /// 长宽比等筛选条件。**属于显示器**，所有列表共用
     /// （理由见 [`Playlist`] 的说明）。
     pub filter: FilterSettings,
@@ -604,6 +631,20 @@ impl Default for Settings {
     }
 }
 
+/// 按一次「切换播放列表」后，一块屏要做的切换。
+///
+/// 它只是**算出来的目标**，不改任何配置：真正写回 `current_playlist`
+/// 与重建轮播由外壳负责（见 `commands::switch_playlists`）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaylistSwitch {
+    /// 显示器名（配置键）。
+    pub monitor: String,
+    /// 切换前指向的列表（可能是空串，也可能是第三个列表）。
+    pub from: String,
+    /// 切换后指向的列表 id。保证存在于 [`Settings::playlists`] 里。
+    pub to: String,
+}
+
 impl Settings {
     /// 按 id 找一个播放列表。
     pub fn playlist(&self, id: &str) -> Option<&Playlist> {
@@ -611,6 +652,42 @@ impl Settings {
             return None;
         }
         self.playlists.iter().find(|p| p.id == id)
+    }
+
+    /// 计算按下「切换播放列表」快捷键后，每块屏应该切到哪个列表。
+    ///
+    /// ## 规则（用户 2026-11 的要求）
+    ///
+    /// 每块屏配两个列表，在两者之间**往返**：
+    ///
+    /// - 当前是 A → 切到 B；其它情况（当前是 B、第三个列表、或空串）→ 切到 A；
+    /// - 两个槽位必须**都非空、互不相同、且都还存在**，否则这块屏跳过、
+    ///   保持原样（"如果某个屏幕没有配两个播放列表，那么就不需要切换了"）；
+    /// - 因此返回的列表里没有一块屏是"目标与现状相同"的。
+    ///
+    /// 纯函数：不读盘、不改设置，因此可以用测试把上面每条规则钉住。
+    pub fn playlist_switch_targets(&self) -> Vec<PlaylistSwitch> {
+        let mut targets = Vec::new();
+        for (name, monitor) in &self.monitors {
+            let a = monitor.switch_playlist_a.trim();
+            let b = monitor.switch_playlist_b.trim();
+            if a.is_empty() || b.is_empty() || a == b {
+                continue;
+            }
+            // 指向的列表可能被删掉（正常保存会清掉槽位，手改配置则可能留下）。
+            // 这时宁可这块屏不动，也不能切到一个不存在的列表上。
+            if self.playlist(a).is_none() || self.playlist(b).is_none() {
+                continue;
+            }
+            let current = monitor.current_playlist.trim();
+            let to = if current == a { b } else { a };
+            targets.push(PlaylistSwitch {
+                monitor: name.clone(),
+                from: monitor.current_playlist.clone(),
+                to: to.to_string(),
+            });
+        }
+        targets
     }
 
     /// 生成一个在现有列表里不重复的 id。
@@ -794,6 +871,9 @@ const HEADER: &str = r#"# WindowsWallPaper 设置
 #   next_hotkey       全局"下一张"（所有屏各换一张），默认 'Ctrl+Alt+Right'
 #   previous_hotkey   全局"上一张"（所有屏各退回一张），默认 'Ctrl+Alt+Left'
 #   show_window_hotkey  全局"显示主界面"（把设置窗口翻出来），默认 'Ctrl+Alt+W'
+#   switch_playlists_hotkey  每块屏在两个播放列表之间**往返切换**的全局快捷键，
+#                     默认 'Ctrl+Alt+Shift+L'；配哪两个列表见 monitors 段
+#                     （switch_playlist_a / switch_playlist_b）。空串 = 不注册。
 #                     快捷键写法：Ctrl / Alt / Shift / Win 用 + 连接，最后一个是
 #                     单个字母、单个数字、F1~F24，或 Left / Right / Space 这类
 #                     有名字的键。至少要带一个修饰键。写错只记 warn、不注册。
@@ -821,6 +901,10 @@ const HEADER: &str = r#"# WindowsWallPaper 设置
 #   不是合法转义，会让整个 monitors 段落解析失败、每屏设置全部失效。
 #   current_playlist  这块屏当前用哪个播放列表的 id；空串表示"还没选"，
 #                     此时这块屏没有内容可播（**这就是"不轮播"的唯一开关**）
+#   switch_playlist_a / switch_playlist_b
+#                     「切换播放列表」快捷键在这块屏上往返的两个列表 id。
+#                     两个都非空、互不相同、且都还存在，这块屏才参与切换；
+#                     当前是 A 就切到 B，否则切到 A。只填一个 = 不切换。
 #   nsfw_wallpaper    NSFW 模式时这块屏显示哪张图（空串 = 没设置）
 #   single_image      这块屏的固定单图（空串 = 没设置）。**非空时它优先于
 #                     播放列表**：这块屏只显示这一张图、不轮播。产物只留一份
@@ -918,6 +1002,11 @@ fn render_toml(settings: &Settings) -> String {
         "show_window_hotkey = {}\n",
         toml_string(&settings.general.show_window_hotkey)
     ));
+    // 往返切换播放列表的快捷键。
+    out.push_str(&format!(
+        "switch_playlists_hotkey = {}\n",
+        toml_string(&settings.general.switch_playlists_hotkey)
+    ));
     // 单击托盘图标的行为。
     out.push_str(&format!(
         "tray_click_action = {}\n",
@@ -950,6 +1039,19 @@ fn render_toml(settings: &Settings) -> String {
             "current_playlist = {}\n",
             toml_string(&monitor.current_playlist)
         ));
+        // 「切换播放列表」的两个槽位：与 NSFW 壁纸一样，空着就不写。
+        if !monitor.switch_playlist_a.is_empty() {
+            out.push_str(&format!(
+                "switch_playlist_a = {}\n",
+                toml_string(&monitor.switch_playlist_a)
+            ));
+        }
+        if !monitor.switch_playlist_b.is_empty() {
+            out.push_str(&format!(
+                "switch_playlist_b = {}\n",
+                toml_string(&monitor.switch_playlist_b)
+            ));
+        }
         // NSFW 壁纸也写出来：没设置（空串）时不写，让文件干净一点。
         if !monitor.nsfw_wallpaper.is_empty() {
             out.push_str(&format!(
@@ -1213,6 +1315,8 @@ mod tests {
             r"\\.\DISPLAY1".to_string(),
             MonitorSettings {
                 current_playlist: "list1".to_string(),
+                switch_playlist_a: "list1".to_string(),
+                switch_playlist_b: "list2".to_string(),
                 filter: FilterSettings {
                     aspect_min: Some(1.5),
                     min_width: Some(1000),
@@ -1245,6 +1349,9 @@ mod tests {
         settings.general.next_hotkey = "Ctrl+Alt+Right".to_string();
         settings.general.previous_hotkey = String::new();
         settings.general.show_window_hotkey = "Ctrl+Shift+F1".to_string();
+        // 第六个快捷键：往返切换播放列表。默认值是 Ctrl+Alt+Shift+L，
+        // 这里用非默认值，才能证明"渲染/解析"两处都写了它。
+        settings.general.switch_playlists_hotkey = "Ctrl+Shift+F11".to_string();
         // 托盘单击行为：非默认值也要能原样往返（否则"设了换一张、重启又变回打开界面"）。
         settings.general.tray_click_action = TrayClickAction::NextWallpaper;
         // 「清理程序目录」那张卡片折叠过：这个偏好必须记住（用户明确要求），
@@ -1283,6 +1390,11 @@ mod tests {
 
         let one = back.monitors.get(r"\\.\DISPLAY1").expect("键应能往返");
         assert_eq!(one.current_playlist, "list1");
+        assert_eq!(
+            one.switch_playlist_a, "list1",
+            "切换槽位 A 必须原样往返（漏写渲染时它只会表现为“按了快捷键没反应”）"
+        );
+        assert_eq!(one.switch_playlist_b, "list2", "切换槽位 B 必须原样往返");
         assert_eq!(one.filter.aspect_min, Some(1.5));
         assert_eq!(one.filter.min_width, Some(1000));
         assert_eq!(
@@ -1305,6 +1417,8 @@ mod tests {
         assert_eq!(two.nsfw_wallpaper, "", "没设 NSFW 壁纸时是空串");
         assert_eq!(two.single_image, "", "没设固定单图时是空串");
         assert_eq!(two.label, "", "没改显示名时是空串（界面据此显示真实显示器名）");
+        assert_eq!(two.switch_playlist_a, "", "没配切换槽位 A 时是空串");
+        assert_eq!(two.switch_playlist_b, "", "没配切换槽位 B 时是空串");
 
         assert_eq!(back.exclude.dirs, vec![r"E:\Pictures\排除我".to_string()]);
         assert_eq!(back.general.nsfw_hotkey, "Ctrl+Shift+F12");
@@ -1319,6 +1433,10 @@ mod tests {
             "「显示主界面」快捷键必须原样往返"
         );
         assert_eq!(
+            back.general.switch_playlists_hotkey, "Ctrl+Shift+F11",
+            "「切换播放列表」快捷键必须原样往返"
+        );
+        assert_eq!(
             back.general.tray_click_action,
             TrayClickAction::NextWallpaper,
             "托盘单击行为必须原样往返"
@@ -1329,6 +1447,99 @@ mod tests {
         );
 
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn playlist_switch_targets_skip_screens_that_are_not_configured() {
+        // 用户的要求："如果某个屏幕没有配两个播放列表，那么就不需要切换了。"
+        // 这里把"没配好"的几种形态都摆出来：一个都没填、只填一个、两个相同、
+        // 两个里有一个已被删掉。它们都必须**整块屏跳过**，而不是切到半截。
+        let mut settings = Settings::default();
+        for id in ["list1", "list2", "list3"] {
+            settings.playlists.push(Playlist {
+                id: id.to_string(),
+                name: id.to_string(),
+                ..Default::default()
+            });
+        }
+        settings.monitors.insert(
+            "only-a".to_string(),
+            MonitorSettings {
+                switch_playlist_a: "list1".to_string(),
+                ..Default::default()
+            },
+        );
+        settings.monitors.insert(
+            "same-both".to_string(),
+            MonitorSettings {
+                switch_playlist_a: "list1".to_string(),
+                switch_playlist_b: "list1".to_string(),
+                ..Default::default()
+            },
+        );
+        settings.monitors.insert(
+            "dangling".to_string(),
+            MonitorSettings {
+                switch_playlist_a: "list1".to_string(),
+                switch_playlist_b: "deleted".to_string(),
+                ..Default::default()
+            },
+        );
+        settings.monitors.insert("nothing".to_string(), MonitorSettings::default());
+
+        assert!(
+            settings.playlist_switch_targets().is_empty(),
+            "只要有槽位没配好，就不该产出任何切换"
+        );
+    }
+
+    #[test]
+    fn playlist_switch_targets_toggle_between_the_two_lists() {
+        // 往返规则：当前是 A → B；当前是 B、第三个列表、或空 → A。
+        // 这四条正是"按一次切过去、再按一次切回来"的全部可能状态。
+        let mut settings = Settings::default();
+        for id in ["list1", "list2", "list3"] {
+            settings.playlists.push(Playlist {
+                id: id.to_string(),
+                name: id.to_string(),
+                ..Default::default()
+            });
+        }
+        let slots = |current: &str| MonitorSettings {
+            current_playlist: current.to_string(),
+            switch_playlist_a: "list1".to_string(),
+            switch_playlist_b: "list2".to_string(),
+            ..Default::default()
+        };
+        settings.monitors.insert("at-a".to_string(), slots("list1"));
+        settings.monitors.insert("at-b".to_string(), slots("list2"));
+        settings.monitors.insert("at-third".to_string(), slots("list3"));
+        settings.monitors.insert("at-none".to_string(), slots(""));
+
+        let targets = settings.playlist_switch_targets();
+        assert_eq!(targets.len(), 4, "四块屏都配好了，都应当参与");
+
+        let to = |name: &str| {
+            targets
+                .iter()
+                .find(|t| t.monitor == name)
+                .unwrap_or_else(|| panic!("{name} 应当参与切换"))
+                .to
+                .as_str()
+        };
+        assert_eq!(to("at-a"), "list2", "在 A 上按一次应当去 B");
+        assert_eq!(to("at-b"), "list1", "在 B 上按一次应当回 A");
+        assert_eq!(
+            to("at-third"),
+            "list1",
+            "当前是别的列表（或空）时应当进 A，否则按一次会“没反应”"
+        );
+        assert_eq!(to("at-none"), "list1");
+
+        // `from` 记的是切换前那块屏的真实选择，切换后要写进日志。
+        let entry = targets.iter().find(|t| t.monitor == "at-none").unwrap();
+        assert_eq!(entry.from, "");
+        assert_eq!(entry.to, "list1");
     }
 
     #[test]

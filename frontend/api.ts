@@ -105,6 +105,11 @@ export interface GeneralView {
   /** 全局"显示主界面"（把设置窗口翻出来，不改壁纸）；空串 = 不注册。 */
   showWindowHotkey: string;
   /**
+   * 全局"切换播放列表"：每块配好两个列表的屏在两者之间往返一次。
+   * 空串 = 不注册。
+   */
+  switchPlaylistsHotkey: string;
+  /**
    * 设置页「清理程序目录」那张卡片是否展开。默认展开（用户要求），
    * 用户在界面上折叠一次就记下来，下次进设置页照旧收着。
    */
@@ -142,6 +147,14 @@ export const NEW_PLAYLIST_DEFAULTS = {
 export interface MonitorView {
   /** 当前选中的播放列表 id。空串表示"还没选"。 */
   currentPlaylist: string;
+  /**
+   * 「切换播放列表」快捷键在这块屏上往返的两个列表 id。
+   *
+   * 两个都非空、互不相同、且都还存在，这块屏才参与切换；
+   * 当前是 A 就切到 B，否则切到 A。空串 = 这一槽没配。
+   */
+  switchPlaylistA: string;
+  switchPlaylistB: string;
   /** NSFW 模式时这块屏显示哪张图。空串表示没设置。 */
   nsfwWallpaper: string;
   /**
@@ -408,6 +421,9 @@ export interface ControlReport {
 export interface MonitorPatch {
   /** 当前选中的播放列表 id。传空串表示清空（该屏将没有内容可播）。 */
   currentPlaylist?: string;
+  /** 「切换播放列表」两个槽位。传空串表示清空这一槽（该屏就不参与切换）。 */
+  switchPlaylistA?: string;
+  switchPlaylistB?: string;
   /** NSFW 模式时这块屏显示哪张图。传空串表示清空。 */
   nsfwWallpaper?: string;
   /** 这块屏的固定单图。传空串表示清空（回到按播放列表轮播）。 */
@@ -450,6 +466,8 @@ export interface SettingsPatch {
   previousHotkey?: string;
   /** 全局"显示主界面"的快捷键。 */
   showWindowHotkey?: string;
+  /** 每块屏在两个播放列表之间往返切换的全局快捷键。 */
+  switchPlaylistsHotkey?: string;
   /** 「清理程序目录」那张卡片展开还是折叠（纯界面偏好，记在设置里）。 */
   cleanupExpanded?: boolean;
   /** 单击托盘图标做什么：`open-window` | `next-wallpaper`。 */
@@ -533,6 +551,13 @@ export const EVENT_MAIN_WINDOW_SHOWN = "wwp://main-window-shown";
  * "正在把项交给系统回收站"，两者的文案、能否取消都不一样。
  */
 export const EVENT_TRASH_EMPTY_PROGRESS = "wwp://trash-empty-progress";
+/**
+ * 按了一次「切换播放列表」快捷键（事件不带数据）。
+ *
+ * 快捷键改的是设置里的 `current_playlist`，界面手上那份 `SettingsInfo`
+ * 不会自己更新；收到就重新拉一次设置，否则播放页的列表下拉框会一直显示旧值。
+ */
+export const EVENT_PLAYLISTS_SWITCHED = "wwp://playlists-switched";
 
 export const api = {
   startupInfo: () => invoke<StartupInfo>("startup_info"),
@@ -906,6 +931,15 @@ export function onScanAllDone(handler: (payload: ScanAllDone) => void): Promise<
  */
 export function onMainWindowShown(handler: () => void): Promise<UnlistenFn> {
   return listen(EVENT_MAIN_WINDOW_SHOWN, () => handler());
+}
+
+/**
+ * 按下「切换播放列表」快捷键后回调一次（事件不带数据）。
+ *
+ * 用途：重新拉一次设置，让播放页的列表下拉框与设置页的槽位跟上。
+ */
+export function onPlaylistsSwitched(handler: () => void): Promise<UnlistenFn> {
+  return listen(EVENT_PLAYLISTS_SWITCHED, () => handler());
 }
 
 /**

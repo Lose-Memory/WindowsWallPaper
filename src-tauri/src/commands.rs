@@ -49,6 +49,12 @@ pub const EVENT_MAIN_WINDOW_SHOWN: &str = "wwp://main-window-shown";
 /// 能否取消、结束后跳到哪里都不一样。共用会让"正在扫描"的界面在删除时
 /// 显示扫描的文案。
 pub const EVENT_TRASH_EMPTY_PROGRESS: &str = "wwp://trash-empty-progress";
+/// 按了一次「切换播放列表」快捷键。
+///
+/// 前端据此重新拉一次设置——快捷键改的是 `current_playlist`，而设置页上
+/// 那两个槽位与播放页的列表下拉框都读设置。不通知的话界面会一直显示旧值，
+/// 直到用户切页或做别的操作，看起来像"按了没反应"。
+pub const EVENT_PLAYLISTS_SWITCHED: &str = "wwp://playlists-switched";
 
 #[tauri::command]
 pub fn startup_info(state: State<'_, AppState>) -> StartupInfo {
@@ -332,6 +338,8 @@ pub struct GeneralView {
     pub previous_hotkey: String,
     /// 全局"显示主界面"的快捷键（把设置窗口翻出来）。
     pub show_window_hotkey: String,
+    /// 每块屏在两个播放列表之间往返切换的全局快捷键。
+    pub switch_playlists_hotkey: String,
     /// 设置页「清理程序目录」那张卡片是否展开（用户折叠过就记下来，默认展开）。
     pub cleanup_expanded: bool,
     /// 单击托盘图标做什么：`open-window` 或 `next-wallpaper`。
@@ -349,6 +357,9 @@ pub struct GeneralView {
 pub struct MonitorView {
     /// 当前选中的播放列表 id。空串表示"还没选"。
     pub current_playlist: String,
+    /// 「切换播放列表」快捷键在这块屏上往返的两个列表 id（空串 = 这一槽没配）。
+    pub switch_playlist_a: String,
+    pub switch_playlist_b: String,
     /// NSFW 模式时这块屏显示哪张图（空串 = 没设置）。
     pub nsfw_wallpaper: String,
     /// 这块屏的固定单图（空串 = 没设置）。非空时它优先于播放列表、不轮播。
@@ -479,6 +490,8 @@ pub fn settings_info(state: State<'_, AppState>) -> SettingsInfo {
                 name.clone(),
                 MonitorView {
                     current_playlist: monitor.current_playlist.clone(),
+                    switch_playlist_a: monitor.switch_playlist_a.clone(),
+                    switch_playlist_b: monitor.switch_playlist_b.clone(),
                     nsfw_wallpaper: monitor.nsfw_wallpaper.clone(),
                     single_image: monitor.single_image.clone(),
                     label: monitor.label.clone(),
@@ -515,6 +528,7 @@ pub fn settings_info(state: State<'_, AppState>) -> SettingsInfo {
             next_hotkey: settings.general.next_hotkey.clone(),
             previous_hotkey: settings.general.previous_hotkey.clone(),
             show_window_hotkey: settings.general.show_window_hotkey.clone(),
+            switch_playlists_hotkey: settings.general.switch_playlists_hotkey.clone(),
             cleanup_expanded: settings.general.cleanup_expanded,
             tray_click_action: settings.general.tray_click_action.as_str().to_string(),
         },
@@ -1415,6 +1429,8 @@ pub struct SettingsPatch {
     pub previous_hotkey: Option<String>,
     /// 全局"显示主界面"的快捷键。
     pub show_window_hotkey: Option<String>,
+    /// 每块屏在两个播放列表之间往返切换的全局快捷键。
+    pub switch_playlists_hotkey: Option<String>,
     /// 设置页「清理程序目录」那张卡片展开还是折叠（用户在界面上点一次就存一次）。
     pub cleanup_expanded: Option<bool>,
     /// 单击托盘图标做什么：`open-window` | `next-wallpaper`。
@@ -1465,6 +1481,9 @@ pub struct PlaylistPatch {
 pub struct MonitorPatch {
     /// 当前选中的播放列表 id。空串表示清空（该屏无内容可播）。
     pub current_playlist: Option<String>,
+    /// 「切换播放列表」两个槽位。空串表示清空这一槽（这块屏就不参与切换）。
+    pub switch_playlist_a: Option<String>,
+    pub switch_playlist_b: Option<String>,
     /// NSFW 模式时这块屏显示哪张图。空串表示清空。
     pub nsfw_wallpaper: Option<String>,
     /// 这块屏的固定单图。空串表示清空（回到按播放列表轮播）。
@@ -1690,6 +1709,26 @@ fn apply_playlist_list(
             );
             monitor.current_playlist.clear();
         }
+        // 两个切换槽位同理：列表被删掉后槽位留着，那块屏会"看着配好了、
+        // 按快捷键却没动静"。清掉它，界面上那两条下拉框会回到「不切换」。
+        if !monitor.switch_playlist_a.is_empty() && !valid_ids.contains(&monitor.switch_playlist_a)
+        {
+            log::info!(
+                "屏幕 {} 的切换槽位 A 指向的播放列表「{}」已不存在，已清空",
+                name,
+                monitor.switch_playlist_a
+            );
+            monitor.switch_playlist_a.clear();
+        }
+        if !monitor.switch_playlist_b.is_empty() && !valid_ids.contains(&monitor.switch_playlist_b)
+        {
+            log::info!(
+                "屏幕 {} 的切换槽位 B 指向的播放列表「{}」已不存在，已清空",
+                name,
+                monitor.switch_playlist_b
+            );
+            monitor.switch_playlist_b.clear();
+        }
     }
 
     Ok(PlaylistApply { count, missing })
@@ -1748,6 +1787,9 @@ pub fn settings_update(state: State<'_, AppState>, patch: SettingsPatch) -> Resu
     if let Some(hotkey) = &patch.show_window_hotkey {
         settings.general.show_window_hotkey = normalize_hotkey("显示主界面", hotkey);
     }
+    if let Some(hotkey) = &patch.switch_playlists_hotkey {
+        settings.general.switch_playlists_hotkey = normalize_hotkey("切换播放列表", hotkey);
+    }
     if let Some(expanded) = patch.cleanup_expanded {
         // 纯界面偏好：存下来只为"下次进设置页照旧收着"，不触发任何别的动作
         // （不重建轮播、不碰壁纸——下面的 `reload` 会因为计划没变而直接返回）。
@@ -1799,6 +1841,31 @@ pub fn settings_update(state: State<'_, AppState>, patch: SettingsPatch) -> Resu
                 .entry(monitor_name.clone())
                 .or_default()
                 .current_playlist = current.to_string();
+        }
+        // 「切换播放列表」的两个槽位：空串 = 清空这一槽（该屏就不参与切换）。
+        // 与 current_playlist 一样校验"指向的列表必须存在"，避免配置里留下
+        // 一个按了快捷键也切不到的死引用。
+        if let Some(slot) = &monitor_patch.switch_playlist_a {
+            let id = slot.trim();
+            if !id.is_empty() && settings.playlist(id).is_none() {
+                return Err(format!("找不到播放列表：{id}"));
+            }
+            settings
+                .monitors
+                .entry(monitor_name.clone())
+                .or_default()
+                .switch_playlist_a = id.to_string();
+        }
+        if let Some(slot) = &monitor_patch.switch_playlist_b {
+            let id = slot.trim();
+            if !id.is_empty() && settings.playlist(id).is_none() {
+                return Err(format!("找不到播放列表：{id}"));
+            }
+            settings
+                .monitors
+                .entry(monitor_name.clone())
+                .or_default()
+                .switch_playlist_b = id.to_string();
         }
         if let Some(nsfw_wallpaper) = &monitor_patch.nsfw_wallpaper {
             let trimmed = nsfw_wallpaper.trim();
@@ -1893,6 +1960,58 @@ pub fn settings_update(state: State<'_, AppState>, patch: SettingsPatch) -> Resu
     }
 
     Ok(settings_info(state))
+}
+
+/// 按一次「切换播放列表」：把每块配好两个列表的屏切到另一个列表。
+///
+/// 由 `broadcast::on_hotkey` 调用。返回一句给人看的结果（进日志、也进提示），
+/// 不是给界面解析的协议。
+///
+/// ## 为什么复用"改 `current_playlist` + `reload`"这条路
+///
+/// 这正是用户手动在播放页改列表时走的那条路：保存 → `reload` 只重建列表
+/// 真的变了的屏、并立刻换一张。于是快捷键的行为与手动改列表**完全一致**，
+/// 不需要在播放引擎里再开一条"切列表"的通道（那会多一套需要单独验证的状态）。
+///
+/// 未配好两个列表、或列表已不存在的屏由 `playlist_switch_targets` 直接跳过；
+/// 固定单图的屏照旧只改配置（单图优先于列表，屏幕上不会变）。
+pub fn switch_playlists(state: &AppState) -> Result<String, String> {
+    let mut settings = state.settings();
+    let targets = settings.playlist_switch_targets();
+    if targets.is_empty() {
+        return Ok("没有屏幕配好两个播放列表，未切换".to_string());
+    }
+
+    let mut switched = Vec::new();
+    for target in &targets {
+        if let Some(monitor) = settings.monitors.get_mut(&target.monitor) {
+            monitor.current_playlist = target.to.clone();
+        }
+        switched.push(format!(
+            "{} {} → {}",
+            target.monitor,
+            if target.from.is_empty() {
+                "（未选）"
+            } else {
+                target.from.as_str()
+            },
+            target.to
+        ));
+    }
+
+    settings
+        .save(&state.settings_path())
+        .map_err(|e| format!("保存设置失败：{e}"))?;
+    *state.settings.lock().unwrap_or_else(|e| e.into_inner()) = settings.clone();
+    log::info!("切换播放列表：{}", switched.join("；"));
+
+    match state.playback.reload(&settings) {
+        Ok(true) => log::info!("播放列表已切换并立即生效"),
+        Ok(false) => {}
+        Err(error) => log::warn!("播放列表已切换，但重建轮播失败：{error}"),
+    }
+
+    Ok(format!("已切换 {} 块屏的播放列表", targets.len()))
 }
 
 /// 丢弃内存里的设置，从磁盘重新读取。

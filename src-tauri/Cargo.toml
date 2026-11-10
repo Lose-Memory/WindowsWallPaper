@@ -1,6 +1,6 @@
 [package]
 name = "windows-wallpaper"
-version = "1.14.0"
+version = "1.15.0"
 edition = "2021"
 description = "WindowsWallPaper：Windows 11 桌面壁纸播放器"
 authors = ["WindowsWallPaper"]
@@ -12,7 +12,7 @@ default-run = "windows-wallpaper"
 members = [".", "crates/wwp-core"]
 
 [workspace.package]
-version = "1.14.0"
+version = "1.15.0"
 edition = "2021"
 
 [build-dependencies]

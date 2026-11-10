@@ -2,6 +2,7 @@ import React from "react";
 import {
   api as apiClient,
   onMainWindowShown,
+  onPlaylistsSwitched,
   sourceLabel,
   type DiagnosticsExport,
   type SettingsInfo,
@@ -95,6 +96,38 @@ export function App() {
       })
       .catch((cause) => {
         void apiClient.logError(`[界面] 主窗口唤起事件订阅失败：${String(cause)}`);
+      });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // 按下「切换播放列表」快捷键后，后端改的是设置里的 `current_playlist`。
+  //
+  // 必须重新拉一次设置：播放页的列表下拉框与设置页那两个槽位都读它，
+  // 不重拉就会一直显示旧值——用户看到的是"按了快捷键，壁纸换了，
+  // 但界面还写着原来的列表"，会以为程序记错了。
+  React.useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+    void onPlaylistsSwitched(() => {
+      if (disposed) return;
+      void apiClient
+        .settingsInfo()
+        .then((next) => {
+          if (!disposed) setSettings(next);
+        })
+        .catch((cause) => {
+          void apiClient.logError(`[界面] 切换播放列表后刷新设置失败：${String(cause)}`);
+        });
+    })
+      .then((un) => {
+        if (disposed) un();
+        else unlisten = un;
+      })
+      .catch((cause) => {
+        void apiClient.logError(`[界面] 切换播放列表事件订阅失败：${String(cause)}`);
       });
     return () => {
       disposed = true;

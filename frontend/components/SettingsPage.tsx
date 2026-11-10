@@ -40,6 +40,39 @@ interface Props {
 export function SettingsPage({ settings, onSettingsChanged, notify }: Props) {
   const general = settings.general;
   const [busy, setBusy] = React.useState(false);
+  /** 当前连着的显示器（从后端取一次）。设置里的屏清单不随插拔变化。 */
+  const [connectedMonitors, setConnectedMonitors] = React.useState<string[]>([]);
+
+  /**
+   * 取一次当前显示器列表。
+   *
+   * 设置页拿到的只有"已保存的每屏设置"，而用户可能要配一块**刚插上、还没保存过**
+   * 的屏（例如新买了副屏，想先配好两个列表再切换）。两块清单取并集，
+   * 两种情况下的屏都能出现在这一页。
+   *
+   * 失败只记一条 debug：这一页的其余功能不依赖它，不该因此弹错误。
+   */
+  React.useEffect(() => {
+    let alive = true;
+    void api
+      .playbackStatus()
+      .then((status) => {
+        if (alive) setConnectedMonitors(status.bindings.map((b) => b.monitorName));
+      })
+      .catch((cause: unknown) => {
+        void api.logDebug(`读取显示器列表失败（设置页）：${String(cause)}`);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /** 要显示的行：已保存的屏与当前连着的屏的并集，按显示器名排序（稳定顺序）。 */
+  const monitorNames = React.useMemo(() => {
+    const names = new Set(Object.keys(settings.monitors));
+    for (const name of connectedMonitors) names.add(name);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [connectedMonitors, settings.monitors]);
 
   const apply = React.useCallback(
     async (patch: SettingsPatch, message = "设置已保存") => {
@@ -131,6 +164,81 @@ export function SettingsPage({ settings, onSettingsChanged, notify }: Props) {
         onSave: (value: string) =>
           apply({ showWindowHotkey: value }, "「显示主界面」快捷键已保存"),
       }),
+    ),
+
+    // 播放列表切换
+    //
+    // 快捷键是全局一个，但"切哪两个列表"每屏各配一套（用户 2026-11 的要求）。
+    // 两个槽位都选好、互不相同、且都还存在，这块屏才参与切换；只配一个的屏
+    // 按了快捷键保持原样——用户原话："没配两个播放列表的屏就不需要切换"。
+    React.createElement(
+      "div",
+      { className: "wwp-card" },
+      React.createElement("h2", { className: "wwp-h2" }, "播放列表切换"),
+      React.createElement(HotkeyField, {
+        label: "切换快捷键",
+        help: TIPS.switchPlaylistsHotkey,
+        value: general.switchPlaylistsHotkey,
+        onSave: (value: string) =>
+          apply({ switchPlaylistsHotkey: value }, "「切换播放列表」快捷键已保存"),
+      }),
+      React.createElement(
+        "div",
+        { className: "wwp-dim", style: { margin: "10px 0 4px" } },
+        "为每块屏选两个播放列表，按一次切到另一个、再按一次切回来；两个都选好且不同才会生效。",
+      ),
+      monitorNames.length === 0
+        ? React.createElement("div", { className: "wwp-dim" }, "还没有检测到屏幕。")
+        : monitorNames.map((name) => {
+            const monitor = settings.monitors[name];
+            const displayName = monitor?.label || name;
+            const save = (field: "switchPlaylistA" | "switchPlaylistB", value: string) =>
+              void apply(
+                { monitors: { [name]: { [field]: value } } },
+                `${displayName}：切换列表${field === "switchPlaylistA" ? " A" : " B"}已保存`,
+              );
+            const options = [
+              React.createElement("option", { key: "", value: "" }, "不切换"),
+              ...settings.playlists.map((playlist) =>
+                React.createElement("option", { key: playlist.id, value: playlist.id }, playlist.name),
+              ),
+            ];
+            return React.createElement(Field, {
+              key: name,
+              label: displayName,
+              // 改过显示名时，悬停能看到真实的显示器名（配置键用的是它）。
+              tip: monitor?.label ? name : undefined,
+              children: React.createElement(
+                "div",
+                { className: "wwp-inline" },
+                React.createElement(
+                  "select",
+                  {
+                    className: "wwp-input wwp-input-sm",
+                    value: monitor?.switchPlaylistA ?? "",
+                    disabled: busy,
+                    "aria-label": `${displayName} 的切换列表 A`,
+                    onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+                      save("switchPlaylistA", e.target.value),
+                  },
+                  options,
+                ),
+                React.createElement("span", { className: "wwp-dim" }, "⇄"),
+                React.createElement(
+                  "select",
+                  {
+                    className: "wwp-input wwp-input-sm",
+                    value: monitor?.switchPlaylistB ?? "",
+                    disabled: busy,
+                    "aria-label": `${displayName} 的切换列表 B`,
+                    onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+                      save("switchPlaylistB", e.target.value),
+                  },
+                  options,
+                ),
+              ),
+            });
+          }),
     ),
 
     // 启动与窗口
